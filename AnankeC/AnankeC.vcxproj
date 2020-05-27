@@ -71,26 +71,26 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Anaconda3\envs\myenv\include;C:\Anaconda3\envs\myenv\Library\include;C:\Anaconda3\envs\myenv\Library\include\eigen3;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <LibraryPath>C:\Anaconda3\envs\myenv\libs;C:\Anaconda3\envs\myenv\Library\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
+    <IncludePath>$(CONDA_DIR)\include;$(CONDA_DIR)\Library\include;$(CONDA_DIR)\Library\include\eigen3;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <LibraryPath>$(CONDA_DIR)\libs;$(CONDA_DIR)\Library\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
     <TargetExt>.pyd</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Anaconda3\envs\myenv\include;C:\Anaconda3\envs\myenv\Library\include;C:\Anaconda3\envs\myenv\Library\include\eigen3;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <LibraryPath>C:\Anaconda3\envs\myenv\libs;C:\Anaconda3\envs\myenv\Library\lib;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86</LibraryPath>
+    <IncludePath>$(CONDA_DIR)\include;$(CONDA_DIR)\Library\include;$(CONDA_DIR)\Library\include\eigen3;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <LibraryPath>$(CONDA_DIR)\libs;$(CONDA_DIR)\Library\lib;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86</LibraryPath>
     <TargetExt>.pyd</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Anaconda3\envs\myenv\include;C:\Anaconda3\envs\myenv\Library\include;C:\Anaconda3\envs\myenv\Library\include\eigen3;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <LibraryPath>C:\Anaconda3\envs\myenv\libs;C:\Anaconda3\envs\myenv\Library\lib;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86</LibraryPath>
+    <IncludePath>$(CONDA_DIR)\include;$(CONDA_DIR)\Library\include;$(CONDA_DIR)\Library\include\eigen3;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <LibraryPath>$(CONDA_DIR)\libs;$(CONDA_DIR)\Library\lib;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86</LibraryPath>
     <TargetExt>.pyd</TargetExt>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\Anaconda3\envs\myenv\include;C:\Anaconda3\envs\myenv\Library\include;C:\Anaconda3\envs\myenv\Library\include\eigen3;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <LibraryPath>C:\Anaconda3\envs\myenv\libs;C:\Anaconda3\envs\myenv\Library\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
+    <IncludePath>$(CONDA_DIR)\include;$(CONDA_DIR)\Library\include;$(CONDA_DIR)\Library\include\eigen3;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <LibraryPath>$(CONDA_DIR)\libs;$(CONDA_DIR)\Library\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
     <TargetExt>.pyd</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
