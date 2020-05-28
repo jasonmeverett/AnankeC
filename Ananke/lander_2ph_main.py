@@ -10,8 +10,8 @@ Solves a 3D lander control problem
 @author: jasonmeverett
 """
 
+import AnankeC
 from ananke.opt import *
-from ananke.examples import *
 from ananke.orbit import *
 from ananke.frames import *
 from ananke.util import *
@@ -31,7 +31,7 @@ import json
 mu = 4902799000000.0
 R_eq = 1738000.0
 Omega = 0.0000026616665
-Tmax = 60000.0
+Tmax = 100000.0
 isp = 450.0
 etaLB = 0.2
 etaUB = 0.9
@@ -46,8 +46,8 @@ sma = 0.5*(ra+rp)
 ecc = (ra-rp)/(ra+rp)
 inc = 0.0
 raan = 0.0
-argper = -30.0
-ta = 0.0
+argper = 0.0
+ta = -25.0
 r0_I,v0_I = elts_to_rv(sma,ecc,inc,raan,argper,ta,mu,degrees=True)
 
 LSlat = 0.0
@@ -61,33 +61,33 @@ parLand = [Omega, R_eq, LSlat, LSlon, LSalt] + rf + vf + np.reshape(R_UEN_PF.as_
 
 # Configure Ananke optimizer. This Python class directly inherits the functions
 # of a PyGMO problem() class, and can be used as such in code.
-ao = Ananke_Config()
+ao = AnankeC.Ananke_Config()
 
 # Coasting leg
-nn1 = 3
-tl1 = TrajLeg(nn1)
+nn1 = 10
+tl1 = AnankeC.TrajLeg(nn1, 200.0)
 tl1.set_len_X_U(7, 4)
-tl1.set_dynamics(lo.f, lo.dfdX, lo.dfdU, params=[mu, 0.0, isp])
-tl1.add_eq(lo.g_X0, lo.dg_X0, 7, RegionFlags.FRONT, params=(r0_I.tolist() + v0_I.tolist() + [m0]))
-tl1.add_eq(lo.g_conU, lo.dg_conU, 1, RegionFlags.PATH, params=[])
-tl1.add_ineq(lo.g_conEtaLB, lo.dg_conEtaLB, 1, RegionFlags.PATH, params=[0.0])
-tl1.add_ineq(lo.g_conEtaUB, lo.dg_conEtaUB, 1, RegionFlags.PATH, params=[0.0])
-tl1.set_TOF(50.0, 300.0)
+tl1.set_dynamics(lo.f, lo.df, [mu, 0.0, isp])
+tl1.add_eq(lo.g_X0, lo.dg_X0, 7, RegionFlags.FRONT, (r0_I.tolist() + v0_I.tolist() + [m0]))
+tl1.add_eq(lo.g_conU, lo.dg_conU, 1, RegionFlags.PATH, [])
+tl1.add_ineq(lo.g_conEtaLB, lo.dg_conEtaLB, 1, RegionFlags.PATH, [0.0])
+tl1.add_ineq(lo.g_conEtaUB, lo.dg_conEtaUB, 1, RegionFlags.PATH, [0.0])
+tl1.set_TOF(100.0, 300.0)
 bnds_min = 11 * [-2000000]
 bnds_max = 11 * [ 2000000]
 tl1.set_bounds(bnds_min, bnds_max)
 
 # Configure a trajectory leg.
-nn2 = 10
-tl2 = TrajLeg(nn2)
+nn2 = 20
+tl2 = AnankeC.TrajLeg(nn2, 500.0)
 tl2.set_len_X_U(7, 4)
-tl2.set_dynamics(lo.f, lo.dfdX, lo.dfdU, [mu, Tmax, isp])
+tl2.set_dynamics(lo.f, lo.df, [mu, Tmax, isp])
 tl2.set_obj(lo.Jfuel, lo.dJfuel, ObjectiveFlags.LAGRANGE, [Tmax])
 # tl2.set_obj(lo.Jctrl, lo.dJctrl, ObjectiveFlags.LAGRANGE, [Tmax])
-tl2.add_eq(lo.g_Xf, lo.dg_Xf, 6, RegionFlags.BACK, params=parLand, td=True)
-tl2.add_eq(lo.g_conU, lo.dg_conU, 1, RegionFlags.PATH, params=[])
-tl2.add_ineq(lo.g_conEtaLB, lo.dg_conEtaLB, 1, RegionFlags.PATH, params=[etaLB])
-tl2.add_ineq(lo.g_conEtaUB, lo.dg_conEtaUB, 1, RegionFlags.PATH, params=[etaUB])
+tl2.add_eq(lo.g_Xf, lo.dg_Xf, 6, RegionFlags.BACK, parLand)
+tl2.add_eq(lo.g_conU, lo.dg_conU, 1, RegionFlags.PATH, [])
+tl2.add_ineq(lo.g_conEtaLB, lo.dg_conEtaLB, 1, RegionFlags.PATH, [etaLB])
+tl2.add_ineq(lo.g_conEtaUB, lo.dg_conEtaUB, 1, RegionFlags.PATH, [etaUB])
 tl2.set_TOF(400.0, 1000.0)
 bnds_min = 11 * [-2000000]
 bnds_max = 11 * [ 2000000]
@@ -99,37 +99,53 @@ ao.add_leg(tl2)
 ao.add_leg_link(0, 1, lo.l_12, lo.dl_12, 7, [])
 ao.set_TOF(100.0, 1500.0)
 
-# Configure problem.
-prob = pg.problem(ao)
-prob.c_tol = 1e-6
-algo = pg.algorithm(pg.nlopt('slsqp'))
-algo.set_verbosity(50)
-algo.extract(pg.nlopt).xtol_rel = 0.0
-algo.extract(pg.nlopt).ftol_rel = 0.0
-algo.extract(pg.nlopt).maxeval = 1
-
 # Set up initial guess.
-# X0 = [r0_I[0], r0_I[1], r0_I[2], v0_I[0], v0_I[1], v0_I[2], m0, 0.0, -1.0, 0.0, 0.9]
-# Xf = [R_eq, 0, 0, 0, 0, 0, 0.5*X0[6], 0.0, -1.0, 0.0, 0.2]
-# Xinit = [300]
-# for ii in range(0, nn1):
-#     pc = 0.5*float(ii)/float(nn1)
-#     Xinit = Xinit +  ( np.array(X0) + pc * (np.array(Xf) - np.array(X0)) ).tolist()
-# Xinit = Xinit + [500]
-# for ii in range(0, nn2):
-#     pc = 0.5 + 0.5*float(ii)/float(nn2)
-#     Xinit = Xinit +  ( np.array(X0) + pc * (np.array(Xf) - np.array(X0)) ).tolist()
+X0 = [r0_I[0], r0_I[1], r0_I[2], v0_I[0], v0_I[1], v0_I[2], m0, 0.0, -1.0, 0.0, 0.9]
+Xf = [R_eq, 0, 0, 0, 0, 0, 0.5*X0[6], 0.0, -1.0, 0.0, 0.2]
+Xinit = [300]
+for ii in range(0, nn1):
+    pc = 0.5*float(ii)/float(nn1)
+    Xinit = Xinit +  ( np.array(X0) + pc * (np.array(Xf) - np.array(X0)) ).tolist()
+Xinit = Xinit + [500]
+for ii in range(0, nn2):
+    pc = 0.5 + 0.5*float(ii)/float(nn2)
+    Xinit = Xinit +  ( np.array(X0) + pc * (np.array(Xf) - np.array(X0)) ).tolist()
 
-Xinit = np.load('champion_x.npy')
-# Xinit[0] = 230.0
+##Xinit = np.load('champion_x.npy')
+## Xinit[0] = 230.0
 
-pop = pg.population(prob)
-pop.push_back(Xinit)
-pop = algo.evolve(pop)
+ao.use_estimate_grad = False
+AnankeC.set_dv(Xinit)
+AnankeC.set_ac(ao)
+X, F = AnankeC.optimize(4000, 1)
+
+## Configure problem.
+#prob = pg.problem(ao)
+#prob.c_tol = 1e-6
+#algo = pg.algorithm(pg.nlopt('slsqp'))
+#algo.set_verbosity(50)
+#algo.extract(pg.nlopt).xtol_rel = 0.0
+#algo.extract(pg.nlopt).ftol_rel = 0.0
+#algo.extract(pg.nlopt).maxeval = 2000
+#pop = pg.population(prob)
+#pop.push_back(Xinit)
+#pop = algo.evolve(pop)
+#X = pop.champion_x
+
+
+
+
+
+
+
+
+
+
+
 
 # Grab first leg data.
-outdata = ao.get_array_data(pop.champion_x)
-np.save('champion_x', pop.champion_x)
+outdata = ao.get_array_data(X)
+np.save('champion_x', X)
 
 # Plot information.
 fig, axs = plt.subplots(3,1,sharex=True,squeeze=True)

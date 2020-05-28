@@ -32,5 +32,8 @@
     <ClInclude Include="Dynamics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="landeropt_setup.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

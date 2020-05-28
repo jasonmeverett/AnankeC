@@ -3,9 +3,16 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/eigen.h>
+#include <pybind11/functional.h>
+#include <pybind11/stl.h>
+#include <pybind11/stl_bind.h>
 #include <Eigen/Geometry>
 #include <iostream>
 #include "Dynamics.h"
+#include <pagmo/algorithm.hpp>
+#include <pagmo/problem.hpp>
+
+using namespace pagmo;
 
 enum RegionFlags
 {
@@ -16,23 +23,65 @@ enum RegionFlags
 
 enum ObjectiveFlags
 {
-	LAGRANGE = 1,
-	MAYER = 2,
-	BOLZA = 3,
-	TIME = 4
+	LAGRANGE = 1
 };
+
+struct Constraint
+{
+	VecFuncType con;
+	PrtFuncType dcon;
+	int lcon;
+	vector_double params;
+
+	Constraint(VecFuncType con, PrtFuncType dcon, int lcon, vector_double params) :
+		con(con),
+		dcon(dcon),
+		lcon(lcon),
+		params(params) {}
+};
+
+struct Dynamics
+{
+	VecFuncType f;
+	PrtFuncType df;
+	vector_double params;
+
+	Dynamics() {}
+
+	Dynamics(VecFuncType f, PrtFuncType df, vector_double params) :
+		f(f),
+		df(df),
+		params(params) {}
+};
+
+struct Objective
+{
+	ScaFuncType f;
+	PrtFuncType df;
+	ObjectiveFlags objType;
+	vector_double params;
+
+	Objective() {}
+
+	Objective(ScaFuncType f, PrtFuncType df, ObjectiveFlags objType, vector_double params) :
+		f(f),
+		df(df),
+		objType(objType),
+		params(params) {}
+};
+
 
 struct TrajLeg
 {
-	py::tuple f;
-	py::tuple J;
+	Dynamics f;
+	Objective J;
 	py::list dynParams;
-	py::list coneqs_f;
-	py::list coneqs_b;
-	py::list coneqs_p;
-	py::list conins_f;
-	py::list conins_b;
-	py::list conins_p;
+	std::vector<Constraint> coneqs_f;
+	std::vector<Constraint> coneqs_b;
+	std::vector<Constraint> coneqs_p;
+	std::vector<Constraint> conins_f;
+	std::vector<Constraint> conins_b;
+	std::vector<Constraint> conins_p;
 
 	double T;
 	int num_nodes;
@@ -41,28 +90,23 @@ struct TrajLeg
 	int lenN;
 	bool dynamicsSet;
 	bool objSet;
-	ObjectiveFlags objType;
 	double Tmin;
 	double Tmax;
 	bool TOFset;
-	py::list bnds_min;
-	py::list bnds_max;
+	vector_double bnds_min;
+	vector_double bnds_max;
 
 	TrajLeg(int n, double T){
 		this->num_nodes = n;
 		this->T = T;
+		this->f = Dynamics();
+		this->J = Objective();
 	};
 
-	void set_dynamics(VecFuncType f, JacFuncType dfdX, JacFuncType dfdU, py::list params)
+	void set_dynamics(VecFuncType f, PrtFuncType df, vector_double params)
 	{
-		this->f = py::make_tuple(f, dfdX, dfdU, params);
+		this->f = Dynamics(f, df, params);
 		this->dynamicsSet = true;
-	}
-
-	Eigen::VectorXd testDynamics(Eigen::VectorXd X, Eigen::VectorXd T, double U)
-	{
-		Eigen::VectorXd fx = py::cast<VecFuncType>(this->f[0])(X, T, U, this->f[3]);
-		return fx;
 	}
 
 	void set_len_X_U(int X, int U)
@@ -72,35 +116,35 @@ struct TrajLeg
 		this->lenN = X + U;
 	}
 
-	void add_eq(VecFuncType con, JacFuncType dcon, int lcon, RegionFlags reg, py::list params, bool td)
+	void add_eq(VecFuncType con, PrtFuncType dcon, int lcon, RegionFlags reg, vector_double params)
 	{
 		switch (reg)
 		{
 		case FRONT:
-			coneqs_f.append(py::make_tuple(con, dcon, lcon, params, td));
+			coneqs_f.push_back(Constraint(con, dcon, lcon, params));
 			break;
 		case BACK:
-			coneqs_b.append(py::make_tuple(con, dcon, lcon, params, td));
+			coneqs_b.push_back(Constraint(con, dcon, lcon, params));
 			break;
 		case PATH:
-			coneqs_p.append(py::make_tuple(con, dcon, lcon, params, td));
+			coneqs_p.push_back(Constraint(con, dcon, lcon, params));
 			break;
 		}
 		return;
 	}
 
-	void add_ineq(VecFuncType con, JacFuncType dcon, int lcon, RegionFlags reg, py::list params, bool td)
+	void add_ineq(VecFuncType con, PrtFuncType dcon, int lcon, RegionFlags reg, vector_double params)
 	{
 		switch (reg)
 		{
 		case FRONT:
-			conins_f.append(py::make_tuple(con, dcon, lcon, params, td));
+			conins_f.push_back(Constraint(con, dcon, lcon, params));
 			break;
 		case BACK:
-			conins_b.append(py::make_tuple(con, dcon, lcon, params, td));
+			conins_b.push_back(Constraint(con, dcon, lcon, params));
 			break;
 		case PATH:
-			conins_p.append(py::make_tuple(con, dcon, lcon, params, td));
+			conins_p.push_back(Constraint(con, dcon, lcon, params));
 			break;
 		}
 		return;
@@ -119,16 +163,15 @@ struct TrajLeg
 		this->TOFset = true;
 	}
 
-	void set_bounds(py::list bnds_min, py::list bnds_max)
+	void set_bounds(vector_double bnds_min, vector_double bnds_max)
 	{
 		this->bnds_min = bnds_min;
 		this->bnds_max = bnds_max;
 	}
 
-	void set_obj(ScaFuncType f, JacFuncType df, ObjectiveFlags typ, py::list params)
+	void set_obj(ScaFuncType f, PrtFuncType df, ObjectiveFlags typ, vector_double params)
 	{
-		this->J = py::make_tuple(f, df, params);
-		this->objType = typ;
+		this->J = Objective(f, df, typ, params);
 		this->objSet = true;
 	}
 
@@ -142,15 +185,11 @@ struct TrajLeg
 			.export_values();
 		py::enum_<ObjectiveFlags>(m, "ObjectiveFlags")
 			.value("LAGRANGE", ObjectiveFlags::LAGRANGE)
-			.value("MAYER", ObjectiveFlags::MAYER)
-			.value("BOLZA", ObjectiveFlags::BOLZA)
-			.value("TIME", ObjectiveFlags::TIME)
 			.export_values();
 
 		auto obj = py::class_<TrajLeg>(m, "TrajLeg");
 		obj.def(py::init<int, double>());
 		obj.def("set_dynamics", &TrajLeg::set_dynamics);
-		obj.def("testDynamics", &TrajLeg::testDynamics);
 		obj.def("set_len_X_U", &TrajLeg::set_len_X_U);
 		obj.def("add_eq", &TrajLeg::add_eq);
 		obj.def("add_ineq", &TrajLeg::add_ineq);
@@ -174,7 +213,6 @@ struct TrajLeg
 		obj.def_readwrite("lenU", &TrajLeg::lenU);
 		obj.def_readwrite("lenN", &TrajLeg::lenN);
 		obj.def_readwrite("objSet", &TrajLeg::objSet);
-		obj.def_readwrite("objType", &TrajLeg::objType);
 		obj.def_readwrite("Tmin", &TrajLeg::Tmin);
 		obj.def_readwrite("Tmax", &TrajLeg::Tmax);
 		obj.def_readwrite("TOFset", &TrajLeg::TOFset);
@@ -200,7 +238,6 @@ struct TrajLeg
 						tl.lenU,
 						tl.lenN,
 						tl.objSet,
-						tl.objType,
 						tl.Tmin,
 						tl.Tmax,
 						tl.TOFset,
@@ -212,25 +249,24 @@ struct TrajLeg
 					TrajLeg tl(t[0].cast<int>(), t[1].cast<double>());
 					tl.num_nodes = t[0].cast<int>();
 					tl.T = t[1].cast<double>();
-					tl.f = t[2].cast<py::tuple>();
-					tl.J = t[3].cast<py::tuple>();
+					tl.f = t[2].cast<Dynamics>();
+					tl.J = t[3].cast<Objective>();
 					tl.dynamicsSet = t[4].cast<bool>();
-					tl.coneqs_f = t[5].cast<py::list>();
-					tl.coneqs_b = t[6].cast<py::list>();
-					tl.coneqs_p = t[7].cast<py::list>();
-					tl.conins_f = t[8].cast<py::list>();
-					tl.conins_b = t[9].cast<py::list>();
-					tl.conins_p = t[10].cast<py::list>();
+					tl.coneqs_f = t[5].cast<std::vector<Constraint>>();
+					tl.coneqs_b = t[6].cast<std::vector<Constraint>>();
+					tl.coneqs_p = t[7].cast<std::vector<Constraint>>();
+					tl.conins_f = t[8].cast<std::vector<Constraint>>();
+					tl.conins_b = t[9].cast<std::vector<Constraint>>();
+					tl.conins_p = t[10].cast<std::vector<Constraint>>();
 					tl.lenX = t[11].cast<int>();
 					tl.lenU = t[12].cast<int>();
 					tl.lenN = t[13].cast<int>();
 					tl.objSet = t[14].cast<bool>();
-					tl.objType = t[15].cast<ObjectiveFlags>();
-					tl.Tmin = t[16].cast<double>();
-					tl.Tmax = t[17].cast<double>();
-					tl.TOFset = t[18].cast<bool>();
-					tl.bnds_min = t[19].cast<py::list>();
-					tl.bnds_max = t[20].cast<py::list>();
+					tl.Tmin = t[15].cast<double>();
+					tl.Tmax = t[16].cast<double>();
+					tl.TOFset = t[17].cast<bool>();
+					tl.bnds_min = t[18].cast<vector_double>();
+					tl.bnds_max = t[19].cast<vector_double>();
 					return tl;
 				}
 			)

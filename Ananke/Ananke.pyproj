@@ -4,19 +4,20 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a38018e2-0529-4bef-8b0e-5080eee86238</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>
-    </StartupFile>
+    <StartupFile>lander_2ph_main.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>Ananke</Name>
     <RootNamespace>Ananke</RootNamespace>
-    <InterpreterId>CondaEnv|CondaEnv|myenv</InterpreterId>
+    <InterpreterId>CondaEnv|CondaEnv|pkenv</InterpreterId>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <EnableNativeCodeDebugging>True</EnableNativeCodeDebugging>
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
     <InterpreterArguments>
     </InterpreterArguments>
+    <SuppressConfigureTestFrameworkPrompt>true</SuppressConfigureTestFrameworkPrompt>
+    <SuppressEnvironmentCreationPrompt>True</SuppressEnvironmentCreationPrompt>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -42,6 +43,9 @@
     <Compile Include="lander_1ph_setup.py" />
     <Compile Include="lander_2ph_main.py" />
     <Compile Include="lander_2ph_setup.py" />
+    <Compile Include="testing.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="ananke\" />
@@ -61,7 +65,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <InterpreterReference Include="CondaEnv|CondaEnv|myenv" />
+    <InterpreterReference Include="CondaEnv|CondaEnv|pkenv" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

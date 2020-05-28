@@ -23,22 +23,17 @@ import json
 # System dynamics for legs.
 # -----------------------------------------------------------
 def f(X, U, T, params):
-    mult = params[0]
     dX = np.zeros(2)
     dX[0] = X[1]
-    dX[1] = U[0] * mult
+    dX[1] = U[0]
     return dX
 
-def dfdX(X, U, T, params):
-    dX = np.zeros((2, 2))
-    dX[0,1] = 1.0
-    return dX
-
-def dfdU(X, U, T, params):
-    dX = np.zeros((2,1))
-    mult = params[0]
-    dX[1] = mult
-    return dX
+def df(X, U, T, params):
+    dfdX = np.zeros((2,2))
+    dfdU = np.zeros((2,1))
+    dfdX[0,1] = 1.0
+    dfdU[1,0] = 1.0
+    return [dfdX, dfdU]
 
 # -----------------------------------------------------------
 # Objective function - minimum control
@@ -48,21 +43,10 @@ def Jctrl(X, U, T, params):
     return J
 
 def dJctrl(X, U, T, params):
-    dJ = np.zeros((1, 3))
-    dJ[0, 2] = 2.0*U[0]
-    return dJ
-
-# -----------------------------------------------------------
-# Objective function - minimum fuel
-# -----------------------------------------------------------   
-def Jfuel(X, U, T, params):
-    J = np.sqrt(U[0]**2.0)
-    return J
-
-def dJfuel(X, U, T, params):
-    dJ = np.zeros((1, 3))
-    dJ[0, 2] = U[0]/np.sqrt(U[0]**2.0)
-    return dJ
+    dJdX = np.zeros((1, 2))
+    dJdU = np.zeros((1, 1))
+    dJdU[0,0] = 2.0 * U[0]
+    return [dJdX, dJdU]
 
 # -----------------------------------------------------------
 # Constraint 1: starting state
@@ -74,10 +58,12 @@ def g1(X, U, T, params):
     return g
 
 def dg1(X, U, T, params):
-    dg = np.zeros((2, 3))
-    dg[0, 0] = 1.0
-    dg[1, 1] = 1.0
-    return dg
+    dgdX = np.zeros((2, 2))
+    dgdU = np.zeros((2, 1))
+    dgdT = np.zeros((2, 1))
+    dgdX[0,0] = 1.0
+    dgdX[1,1] = 1.0
+    return [dgdX, dgdU, dgdT]
 
 # -----------------------------------------------------------
 # Constraint 2: ending state
@@ -89,10 +75,12 @@ def g2(X, U, T, params):
     return g
 
 def dg2(X, U, T, params):
-    dg = np.zeros((2, 3))
-    dg[0, 0] = 1.0
-    dg[1, 1] = 1.0
-    return dg
+    dgdX = np.zeros((2, 2))
+    dgdU = np.zeros((2, 1))
+    dgdT = np.zeros((2, 1))
+    dgdX[0, 0] = 1.0
+    dgdX[1, 1] = 1.0
+    return [dgdX, dgdU, dgdT]
 
 # -----------------------------------------------------------
 # Constraint 3: controls path constraint limit
@@ -104,9 +92,11 @@ def g3(X, U, T, params):
     return g
 
 def dg3(X, U, T, params):
-    dg = np.zeros((1, 3))
-    dg[0, 2] = U[0]/np.sqrt(U[0]**2.0)
-    return dg
+    dgdX = np.zeros((1, 2))
+    dgdU = np.zeros((1, 1))
+    dgdT = np.zeros((1, 1))
+    dgdU[0, 0] = U[0]/np.sqrt(U[0]**2.0)
+    return [dgdX, dgdU, dgdT]
 
 
 
