@@ -10,7 +10,6 @@ Solves a 3D Lunar Lander Optimization problem.
 @author: jasonmeverett
 """
 
-from ananke.opt import *
 from ananke.orbit import *
 from ananke.frames import *
 from ananke.util import *

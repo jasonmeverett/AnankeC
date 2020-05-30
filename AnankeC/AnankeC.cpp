@@ -1,4 +1,3 @@
-#include <pybind11/pybind11.h>
 #include "ex1_setup.h"
 #include "TrajLeg.h"
 #include "Ananke_Config.h"

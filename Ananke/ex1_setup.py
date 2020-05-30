@@ -10,7 +10,6 @@ Solves a 1D control problem.
 @author: jasonmeverett
 """
 
-from ananke.opt import *
 import numpy as np
 # import pygmo as pg
 import json

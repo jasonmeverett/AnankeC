@@ -11,7 +11,6 @@ Solves a 3D lander control problem
 """
 
 import AnankeC
-from ananke.opt import *
 from ananke.orbit import *
 from ananke.frames import *
 from ananke.util import *
@@ -21,6 +20,8 @@ from scipy.linalg import norm
 import numpy as np
 import json
 
+RegionFlags = AnankeC.RegionFlags
+ObjectiveFlags = AnankeC.ObjectiveFlags
 
 # =============================================================================
 #                                                               PROBLEM SET UP
@@ -98,7 +99,6 @@ ao.add_leg(tl1)
 ao.add_leg(tl2)
 ao.add_leg_link(0, 1, lo.l_12, lo.dl_12, 7, [])
 ao.set_TOF(100.0, 2500.0)
-# ao.minimize_total_time = True
 
 # set up initial guess.
 x0 = [r0_I[0], r0_I[1], r0_I[2], v0_I[0], v0_I[1], v0_I[2], m0, 0.0, -1.0, 0.0, 0.9]
@@ -114,22 +114,9 @@ for ii in range(0, nn2):
 
 # Xinit = np.load('champion_x.npy')
 
-#ao.use_estimate_grad = False
-#AnankeC.set_dv(Xinit)
-#AnankeC.set_ac(ao)
-#X, F = AnankeC.optimize(6000, 50)
-
-# Configure problem.
-prob = pg.problem(ao)
-prob.c_tol = 1e-2
-uda = ppnf.snopt7(screen_output=True, library="C:/Lib/snopt7/build/libsnopt.dll", minor_version=7)
-uda.set_integer_option("Major iterations limit", 500)
-algo = pg.algorithm(uda)
-pop = pg.population(prob)
-pop.push_back(xinit)
-pop = algo.evolve(pop)
-X = pop.champion_x
-
+AnankeC.set_dv(xinit)
+AnankeC.set_ac(ao)
+X, F = AnankeC.optimize(6000, 50, 1e-2)
 
 # Grab first leg data.
 outdata = ao.get_array_data(X)

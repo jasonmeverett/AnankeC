@@ -1,11 +1,6 @@
 #pragma once
 
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <pybind11/eigen.h>
-#include <Eigen/Geometry>
-#include <iostream>
-#include "Dynamics.h"
+#include "Structs.h"
 
 namespace py = pybind11;
 

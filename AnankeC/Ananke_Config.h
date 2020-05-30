@@ -1,21 +1,7 @@
 #pragma once
 
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <pybind11/eigen.h>
-#include <pybind11/stl.h>
-#include <Eigen/Geometry>
-#include <iostream>
-#include "Dynamics.h"
+#include "Structs.h"
 #include "TrajLeg.h"
-#include <pagmo/algorithm.hpp>
-#include <pagmo/algorithms/nlopt.hpp>
-#include <pagmo/population.hpp>
-#include <pagmo/problem.hpp>
-#include <pagmo/utils/gradients_and_hessians.hpp>
-#include <fstream>
-#include <iomanip>
-#include <chrono>
 
 using namespace std::chrono;
 using namespace pagmo;
@@ -205,17 +191,13 @@ struct Ananke_Config
 				double Tk = T0 + dt * static_cast<double>(ii);
 				double Tkp1 = T0 + dt * static_cast<double>(ii + 1);
 				int id0_Xk = this->get_dvi_N(this->idxLegObj, ii);
-				int idf_Xk = id0_Xk + TL.lenX;
-				int id0_Uk = idf_Xk;
-				int idf_Uk = id0_Uk + TL.lenU;
-				int id0_Xkp1 = idf_Uk;
-				int idf_Xkp1 = id0_Xkp1 + TL.lenX;
-				int id0_Ukp1 = idf_Xkp1;
-				int idf_Ukp1 = id0_Ukp1 + TL.lenU;
-				Eigen::VectorXd Xk = x.segment(id0_Xk, idf_Xk - id0_Xk);
-				Eigen::VectorXd Uk = x.segment(id0_Uk, idf_Uk - id0_Uk);
-				Eigen::VectorXd Xkp1 = x.segment(id0_Xkp1, idf_Xkp1 - id0_Xkp1);
-				Eigen::VectorXd Ukp1 = x.segment(id0_Ukp1, idf_Ukp1 - id0_Ukp1);
+				int id0_Uk = id0_Xk + TL.lenX;
+				int id0_Xkp1 = id0_Uk + TL.lenU;
+				int id0_Ukp1 = id0_Xkp1 + TL.lenX;
+				Eigen::VectorXd Xk = x.segment(id0_Xk, TL.lenX);
+				Eigen::VectorXd Uk = x.segment(id0_Uk, TL.lenU);
+				Eigen::VectorXd Xkp1 = x.segment(id0_Xkp1, TL.lenX);
+				Eigen::VectorXd Ukp1 = x.segment(id0_Ukp1, TL.lenU);
 				vector_double params = TL.J.params;
 				double J1 = TL.J.f(Xk, Uk, Tk, params);
 				double J2 = TL.J.f(Xkp1, Ukp1, Tkp1, params);
@@ -305,18 +287,14 @@ struct Ananke_Config
 				double Tk = T0 + dt * static_cast<double>(jj);
 				double Tkp1 = T0 + dt * static_cast<double>(jj + 1);
 				int id0_Xk = this->get_dvi_N(ii, jj);
-				int idf_Xk = id0_Xk + TL.lenX;
-				int id0_Uk = idf_Xk;
-				int idf_Uk = id0_Uk + TL.lenU;
-				int id0_Xkp1 = idf_Uk;
-				int idf_Xkp1 = id0_Xkp1 + TL.lenX;
-				int id0_Ukp1 = idf_Xkp1;
-				int idf_Ukp1 = id0_Ukp1 + TL.lenU;
+				int id0_Uk = id0_Xk + TL.lenX;
+				int id0_Xkp1 = id0_Uk + TL.lenU;
+				int id0_Ukp1 = id0_Xkp1 + TL.lenX;
+				Eigen::VectorXd Xk = x.segment(id0_Xk, TL.lenX);
+				Eigen::VectorXd Uk = x.segment(id0_Uk, TL.lenU);
+				Eigen::VectorXd Xkp1 = x.segment(id0_Xkp1, TL.lenX);
+				Eigen::VectorXd Ukp1 = x.segment(id0_Ukp1, TL.lenU);
 				vector_double params = TL.f.params;
-				Eigen::VectorXd Xk = x.segment(id0_Xk, idf_Xk - id0_Xk);
-				Eigen::VectorXd Uk = x.segment(id0_Uk, idf_Uk - id0_Uk);
-				Eigen::VectorXd Xkp1 = x.segment(id0_Xkp1, idf_Xkp1 - id0_Xkp1);
-				Eigen::VectorXd Ukp1 = x.segment(id0_Ukp1, idf_Ukp1 - id0_Ukp1);
 				Eigen::VectorXd fk = TL.f.f(Xk, Uk, Tk, params);
 				Eigen::VectorXd fkp1 = TL.f.f(Xkp1, Ukp1, Tkp1, params);
 				Eigen::VectorXd Uc = 0.5 * (Uk + Ukp1);
@@ -582,18 +560,14 @@ struct Ananke_Config
 					double Tk = T0 + dt * static_cast<double>(jj);
 					double Tkp1 = T0 + dt * static_cast<double>(jj + 1);
 					int id0_Xk = this->get_dvi_N(ii, jj);
-					int idf_Xk = id0_Xk + TL.lenX;
-					int id0_Uk = idf_Xk;
-					int idf_Uk = id0_Uk + TL.lenU;
-					int id0_Xkp1 = idf_Uk;
-					int idf_Xkp1 = id0_Xkp1 + TL.lenX;
-					int id0_Ukp1 = idf_Xkp1;
-					int idf_Ukp1 = id0_Ukp1 + TL.lenU;
+					int id0_Uk = id0_Xk + TL.lenX;
+					int id0_Xkp1 = id0_Uk + TL.lenU;
+					int id0_Ukp1 = id0_Xkp1 + TL.lenX;
+					Eigen::VectorXd Xk = x.segment(id0_Xk, TL.lenX);
+					Eigen::VectorXd Uk = x.segment(id0_Uk, TL.lenU);
+					Eigen::VectorXd Xkp1 = x.segment(id0_Xkp1, TL.lenX);
+					Eigen::VectorXd Ukp1 = x.segment(id0_Ukp1, TL.lenU);
 					vector_double params = TL.f.params;
-					Eigen::VectorXd Xk = x.segment(id0_Xk, idf_Xk - id0_Xk);
-					Eigen::VectorXd Uk = x.segment(id0_Uk, idf_Uk - id0_Uk);
-					Eigen::VectorXd Xkp1 = x.segment(id0_Xkp1, idf_Xkp1 - id0_Xkp1);
-					Eigen::VectorXd Ukp1 = x.segment(id0_Ukp1, idf_Ukp1 - id0_Ukp1);
 					Eigen::VectorXd fk = TL.f.f(Xk, Uk, Tk, params);
 					Eigen::VectorXd fkp1 = TL.f.f(Xkp1, Ukp1, Tkp1, params);
 					Eigen::VectorXd Uc = 0.5 * (Uk + Ukp1);
@@ -742,15 +716,6 @@ struct Ananke_Config
 			Eigen::VectorXd grad_rtn(Eigen::Map<Eigen::VectorXd>(grad_trn.data(), 
 				grad_trn.rows()*grad_trn.cols()));
 			vector_double outRtn(grad_rtn.data(), grad_rtn.data() + grad_rtn.size());
-
-			//std::cout << grad_clc.block(30, 30, 20, 20) << std::endl;
-			//std::ofstream ffout("testing.csv");
-			//for (int ii = 0; ii < outRtn.size(); ii++)
-			//{
-			//	ffout << std::setprecision(10) << outRtn[ii] << "\n";
-			//}
-			//ffout.close();
-			//exit(0);
 
 			return outRtn;
 		}

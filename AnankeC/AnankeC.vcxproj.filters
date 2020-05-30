@@ -29,10 +29,7 @@
     <ClInclude Include="TrajLeg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Dynamics.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="landeropt_setup.h">
+    <ClInclude Include="Structs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,18 +1,10 @@
 #pragma once
 
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <pybind11/eigen.h>
-#include <pybind11/functional.h>
-#include <pybind11/stl.h>
-#include <pybind11/stl_bind.h>
-#include <Eigen/Geometry>
-#include <iostream>
-#include "Dynamics.h"
-#include <pagmo/algorithm.hpp>
-#include <pagmo/problem.hpp>
+#include "Structs.h"
 
 using namespace pagmo;
+using namespace Eigen;
+
 
 enum RegionFlags
 {
@@ -25,6 +17,15 @@ enum ObjectiveFlags
 {
 	LAGRANGE = 1,
 	MAYER = 2
+};
+
+template <int OR, int LX, int LU>
+struct VectorFunctional
+{
+	std::function<Matrix<double, OR, 1 >(Matrix<double, LX, 1>, Matrix<double, LU, 1>, double, vector_double)> compute;
+	std::function<Matrix<double, OR, LX>(Matrix<double, LX, 1>, Matrix<double, LU, 1>, double, vector_double)> jacX;
+	std::function<Matrix<double, OR, LU>(Matrix<double, LX, 1>, Matrix<double, LU, 1>, double, vector_double)> jacU;
+	std::function<Matrix<double, OR, 1 >(Matrix<double, LX, 1>, Matrix<double, LU, 1>, double, vector_double)> jacT;
 };
 
 struct Constraint

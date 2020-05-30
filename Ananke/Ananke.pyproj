@@ -29,8 +29,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="ananke\frames.py" />
-    <Compile Include="ananke\opt\_ananke_opt.py" />
-    <Compile Include="ananke\opt\__init__.py" />
     <Compile Include="ananke\orbit.py" />
     <Compile Include="ananke\planets.py" />
     <Compile Include="ananke\util.py" />
@@ -39,23 +37,11 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="ex1_setup.py" />
-    <Compile Include="lander_1ph_main.py" />
-    <Compile Include="lander_1ph_setup.py" />
     <Compile Include="lander_2ph_main.py" />
     <Compile Include="lander_2ph_setup.py" />
-    <Compile Include="testing.py">
-      <SubType>Code</SubType>
-    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="ananke\" />
-    <Folder Include="ananke\opt\" />
-    <Folder Include="ananke\opt\__pycache__\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="ananke\opt\__pycache__\_ananke_opt.cpython-37.pyc" />
-    <Content Include="ananke\opt\__pycache__\_run_lander_opt.cpython-37.pyc" />
-    <Content Include="ananke\opt\__pycache__\__init__.cpython-37.pyc" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AnankeC\AnankeC.vcxproj">
