@@ -15,7 +15,9 @@
 #include <pagmo/utils/gradients_and_hessians.hpp>
 #include <fstream>
 #include <iomanip>
+#include <chrono>
 
+using namespace std::chrono;
 using namespace pagmo;
 
 struct LegLink
@@ -245,6 +247,9 @@ struct Ananke_Config
 
 		// Constraints
 		double tofTOT = 0.0;
+		const int num_eqs = this->get_nec() - this->LegLinks.size();
+		const int num_ins = this->get_nic();
+		const int num_lks = this->LegLinks.size();
 		std::vector<Eigen::VectorXd> constr_eqs;
 		std::vector<Eigen::VectorXd> constr_ins;
 		for (int ii = 0; ii < this->TrajLegs.size(); ii++)
@@ -841,71 +846,5 @@ struct Ananke_Config
 		obj.def("get_dvi_X", &Ananke_Config::get_dvi_X);
 		obj.def("get_dvi_T", &Ananke_Config::get_dvi_T);
 
-		obj.def(
-			py::pickle(
-				[](const Ananke_Config& ac) {
-					return py::make_tuple(
-						ac.TrajLegs,
-						ac.LegLinks,
-						ac.maxTOF,
-						ac.minTOF,
-						ac.idxLegObj,
-						ac.use_estimate_grad,
-						ac.est_grad_dt
-					);
-				},
-				[](py::tuple t) {
-					Ananke_Config ac;
-					ac.TrajLegs = py::cast<std::vector<TrajLeg>>(t[0]);
-					ac.LegLinks = py::cast<std::vector<LegLink>>(t[1]);
-					ac.maxTOF = py::cast<double>(t[2]);
-					ac.minTOF = py::cast<double>(t[3]);
-					ac.idxLegObj = py::cast<int>(t[4]);
-					ac.use_estimate_grad = py::cast<bool>(t[5]);
-					ac.est_grad_dt = py::cast<double>(t[6]);
-					return ac;
-				}
-			)
-		);
-
-	}
-};
-
-static Ananke_Config ac;
-static vector_double X0;
-
-void set_dv(vector_double dv)
-{
-	X0 = dv;
-}
-void set_ac(Ananke_Config ac_in)
-{
-	ac = ac_in;
-	ac.set_nec();
-	ac.set_nic();
-	ac.set_bounds();
-}
-
-struct Ananke_Problem {
-
-	vector_double::size_type get_nec() const
-	{
-		return ac.get_nec();
-	}
-	vector_double::size_type get_nic() const
-	{
-		return ac.get_nic();
-	}
-	vector_double gradient(const vector_double& dv) const
-	{
-		return ac.gradient(dv);
-	}
-	vector_double fitness(const vector_double& dv) const
-	{
-		return ac.fitness(dv);
-	}
-	std::pair<vector_double, vector_double> get_bounds() const
-	{
-		return ac.get_bounds();
 	}
 };

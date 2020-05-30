@@ -19,14 +19,14 @@ from ananke.opt import *
 RegionFlags = AnankeC.RegionFlags
 ObjectiveFlags = AnankeC.ObjectiveFlags
 
-use_cpp = True
+use_cpp = False
 
 t1 = time.time()
 
 # =============================================================================
 #                                                               PROBLEM SET UP
 # =============================================================================
-num_nodes = 100
+num_nodes = 300
 
 if use_cpp:
     # =============================================================================
@@ -39,16 +39,16 @@ if use_cpp:
     tl1.set_dynamics(AnankeC.ex1.f, AnankeC.ex1.df, [])
     tl1.add_eq(AnankeC.ex1.g1, AnankeC.ex1.dg1, 2, RegionFlags.FRONT, [])
     tl1.add_eq(AnankeC.ex1.g2, AnankeC.ex1.dg2, 2, RegionFlags.BACK, [])
-    tl1.add_ineq(AnankeC.ex1.g3, AnankeC.ex1.dg3, 1, RegionFlags.PATH, [4.5])
+    tl1.add_ineq(AnankeC.ex1.g3, AnankeC.ex1.dg3, 1, RegionFlags.PATH, [12.0])
     tl1.set_obj(AnankeC.ex1.Jctrl, AnankeC.ex1.dJctrl, ObjectiveFlags.LAGRANGE, [])
-    tl1.set_TOF(1.0, 1.0)
+    tl1.set_TOF(0.1, 1.0)
     bnds_min = [-100.0, -100.0, -100.0]
     bnds_max = [ 100.0,  100.0,  100.0]
     tl1.set_bounds(bnds_min, bnds_max)
 
     # Add a trajectory leg.
     ao.add_leg(tl1)
-    ao.set_TOF(0.0, 1.0)
+    ao.set_TOF(0.1, 1.0)
     #ao.use_estimate_grad = True
     #ao.est_grad_dt = 1e-8
 
@@ -56,10 +56,10 @@ if use_cpp:
     for ii in range(0, num_nodes):
         X0 = X0 + [float(ii)/float(num_nodes), 1.0, 1.0 - float(ii)/float(num_nodes)] 
 
-    
     AnankeC.set_dv(X0)
     AnankeC.set_ac(ao)
-    X, F = AnankeC.optimize(30, 1)
+    X, F = AnankeC.optimize(300, 10, 1e-5)
+
     # =============================================================================
     # =============================================================================
 
@@ -75,15 +75,17 @@ else:
     tl1.add_eq(ex1.g1, ex1.dg1, 2, RegionFlags.FRONT, [])
     tl1.add_eq(ex1.g2, ex1.dg2, 2, RegionFlags.BACK, [])
     tl1.add_ineq(ex1.g3, ex1.dg3, 1, RegionFlags.PATH, [4.5])
-    tl1.set_obj(ex1.Jctrl, ex1.dJctrl, ObjectiveFlags.LAGRANGE, [])
-    tl1.set_TOF(1.0, 1.0)
+    tl1.set_obj(ex1.Jctrl, ex1.dJctrl, ObjectiveFlags.LAGRANGE, [12.0])
+    # tl1.set_obj(ex1.Jfuel, ex1.dJfuel, ObjectiveFlags.LAGRANGE, [])
+    tl1.set_TOF(0.1, 1.0)
     bnds_min = [-100.0, -100.0, -100.0]
     bnds_max = [ 100.0,  100.0,  100.0]
     tl1.set_bounds(bnds_min, bnds_max)
 
     # Add a trajectory leg.
     ao.add_leg(tl1)
-    ao.set_TOF(0.0, 1.0)
+    ao.set_TOF(0.1, 1.0)
+    # ao.minimize_total_time = True
 
     X0 = [1.0]
     for ii in range(0, num_nodes):
@@ -91,18 +93,15 @@ else:
 
     prob = pg.problem(ao)
     prob.c_tol = 1e-5
-    algo = pg.algorithm(pg.nlopt('slsqp'))
-    algo.set_verbosity(1)
-    algo.extract(pg.nlopt).xtol_rel = 0.0
-    algo.extract(pg.nlopt).ftol_rel = 0.0
-    algo.extract(pg.nlopt).maxeval = 30
 
-    print(prob)
+    uda = ppnf.snopt7(screen_output=True, library="C:/Lib/snopt7/build/libsnopt.dll", minor_version=7)
+    algo = pg.algorithm(uda)
     pop = pg.population(prob)
     pop.push_back(X0)
     pop = algo.evolve(pop)
     X = pop.champion_x
     F = pop.champion_f
+
     # =============================================================================
     # =============================================================================
 
@@ -127,6 +126,7 @@ axs[2].minorticks_on()
 axs[0].set_ylabel('Position')
 axs[1].set_ylabel('Velocity')
 axs[2].set_ylabel('Control')
+plt.suptitle("Matthew Kelly Example Problem")
 plt.show()
 
 

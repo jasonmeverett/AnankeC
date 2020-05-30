@@ -12,7 +12,7 @@ Solves a 1D control problem.
 
 from ananke.opt import *
 import numpy as np
-import pygmo as pg
+# import pygmo as pg
 import json
 
 # =============================================================================
@@ -46,7 +46,19 @@ def dJctrl(X, U, T, params):
     dJdX = np.zeros((1, 2))
     dJdU = np.zeros((1, 1))
     dJdU[0,0] = 2.0 * U[0]
-    return [dJdX, dJdU]
+    dJdT = np.zeros((1,1))
+    return [dJdX, dJdU, dJdT]
+
+def Jfuel(X, U, T, params):
+    J = np.sqrt(U[0]*U[0])
+    return J
+
+def dJfuel(X, U, T, params):
+    dJdX = np.zeros((1, 2))
+    dJdU = np.zeros((1, 1))
+    dJdU[0,0] = 2.0 * U[0] * 1 / (2*np.sqrt(U[0]*U[0]))
+    dJdT = np.zeros((1,1))
+    return [dJdX, dJdU, dJdT]
 
 # -----------------------------------------------------------
 # Constraint 1: starting state

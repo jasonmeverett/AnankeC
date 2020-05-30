@@ -23,7 +23,8 @@ enum RegionFlags
 
 enum ObjectiveFlags
 {
-	LAGRANGE = 1
+	LAGRANGE = 1,
+	MAYER = 2
 };
 
 struct Constraint
@@ -33,7 +34,7 @@ struct Constraint
 	int lcon;
 	vector_double params;
 
-	Constraint(VecFuncType con, PrtFuncType dcon, int lcon, vector_double params) :
+	Constraint(VecFuncType& con, PrtFuncType& dcon, int lcon, vector_double params) :
 		con(con),
 		dcon(dcon),
 		lcon(lcon),
@@ -48,7 +49,7 @@ struct Dynamics
 
 	Dynamics() {}
 
-	Dynamics(VecFuncType f, PrtFuncType df, vector_double params) :
+	Dynamics(VecFuncType& f, PrtFuncType& df, vector_double params) :
 		f(f),
 		df(df),
 		params(params) {}
@@ -63,7 +64,7 @@ struct Objective
 
 	Objective() {}
 
-	Objective(ScaFuncType f, PrtFuncType df, ObjectiveFlags objType, vector_double params) :
+	Objective(ScaFuncType& f, PrtFuncType& df, ObjectiveFlags objType, vector_double params) :
 		f(f),
 		df(df),
 		objType(objType),
@@ -185,6 +186,7 @@ struct TrajLeg
 			.export_values();
 		py::enum_<ObjectiveFlags>(m, "ObjectiveFlags")
 			.value("LAGRANGE", ObjectiveFlags::LAGRANGE)
+			.value("MAYER", ObjectiveFlags::MAYER)
 			.export_values();
 
 		auto obj = py::class_<TrajLeg>(m, "TrajLeg");
@@ -218,59 +220,6 @@ struct TrajLeg
 		obj.def_readwrite("TOFset", &TrajLeg::TOFset);
 		obj.def_readwrite("bnds_min", &TrajLeg::bnds_min);
 		obj.def_readwrite("bnds_max", &TrajLeg::bnds_max);
-
-		obj.def(
-			py::pickle(
-				[](const TrajLeg& tl) {
-					return py::make_tuple(
-						tl.num_nodes, 
-						tl.T,
-						tl.f,
-						tl.J,
-						tl.dynamicsSet,
-						tl.coneqs_f,
-						tl.coneqs_b,
-						tl.coneqs_p,
-						tl.conins_f,
-						tl.conins_b,
-						tl.conins_p,
-						tl.lenX,
-						tl.lenU,
-						tl.lenN,
-						tl.objSet,
-						tl.Tmin,
-						tl.Tmax,
-						tl.TOFset,
-						tl.bnds_min,
-						tl.bnds_max
-						);
-				},
-				[](py::tuple t) {
-					TrajLeg tl(t[0].cast<int>(), t[1].cast<double>());
-					tl.num_nodes = t[0].cast<int>();
-					tl.T = t[1].cast<double>();
-					tl.f = t[2].cast<Dynamics>();
-					tl.J = t[3].cast<Objective>();
-					tl.dynamicsSet = t[4].cast<bool>();
-					tl.coneqs_f = t[5].cast<std::vector<Constraint>>();
-					tl.coneqs_b = t[6].cast<std::vector<Constraint>>();
-					tl.coneqs_p = t[7].cast<std::vector<Constraint>>();
-					tl.conins_f = t[8].cast<std::vector<Constraint>>();
-					tl.conins_b = t[9].cast<std::vector<Constraint>>();
-					tl.conins_p = t[10].cast<std::vector<Constraint>>();
-					tl.lenX = t[11].cast<int>();
-					tl.lenU = t[12].cast<int>();
-					tl.lenN = t[13].cast<int>();
-					tl.objSet = t[14].cast<bool>();
-					tl.Tmin = t[15].cast<double>();
-					tl.Tmax = t[16].cast<double>();
-					tl.TOFset = t[17].cast<bool>();
-					tl.bnds_min = t[18].cast<vector_double>();
-					tl.bnds_max = t[19].cast<vector_double>();
-					return tl;
-				}
-			)
-		);
 
 		return;
 	}

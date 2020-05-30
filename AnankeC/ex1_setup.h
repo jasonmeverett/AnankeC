@@ -13,16 +13,16 @@ namespace py = pybind11;
 struct Ex1
 {
 	inline static Eigen::VectorXd f(Eigen::VectorXd X, Eigen::VectorXd U, double T, vector_double params) {
-		Eigen::VectorXd dX(2);
+		Eigen::Matrix<double, 2, 1> dX;
 		dX[0] = X[1];
 		dX[1] = U[0];
 		return dX;
 	};
 
 	inline static std::vector<Eigen::MatrixXd> df(Eigen::VectorXd X, Eigen::VectorXd U, double T, vector_double params) {
-		Eigen::MatrixXd dfdX = Eigen::MatrixXd::Zero(2, 2);
-		Eigen::MatrixXd dfdU = Eigen::MatrixXd::Zero(2, 1);
-		Eigen::MatrixXd dfdT = Eigen::MatrixXd::Zero(2, 1);
+		Eigen::Matrix<double, 2, 2> dfdX = Eigen::Matrix<double, 2, 2>::Zero();
+		Eigen::Matrix<double, 2, 1> dfdU = Eigen::Matrix<double, 2, 1>::Zero();
+		Eigen::Matrix<double, 2, 1> dfdT = Eigen::Matrix<double, 2, 1>::Zero();
 		dfdX(0, 1) = 1.0;
 		dfdU(1, 0) = 1.0;
 		return {dfdX, dfdU, dfdT};
@@ -33,14 +33,14 @@ struct Ex1
 	};
 
 	inline static std::vector<Eigen::MatrixXd> dJctrl(Eigen::VectorXd X, Eigen::VectorXd U, double T, vector_double params) {
-		Eigen::MatrixXd dJdX = Eigen::MatrixXd::Zero(1, 2);
-		Eigen::MatrixXd dJdU = Eigen::MatrixXd::Zero(1, 1);
+		Eigen::Matrix<double, 1, 2> dJdX = Eigen::Matrix<double, 1, 2>::Zero();
+		Eigen::Matrix<double, 1, 1> dJdU = Eigen::Matrix<double, 1, 1>::Zero();
 		dJdU(0, 0) = 2.0 * U[0];
 		return {dJdX, dJdU};
 	};
 
 	inline static Eigen::VectorXd g1(Eigen::VectorXd X, Eigen::VectorXd U, double T, vector_double params) {
-		Eigen::VectorXd g(2);
+		Eigen::Matrix<double, 2, 1> g(2);
 		g[0] = X[0];
 		g[1] = X[1];
 		return g;
@@ -56,7 +56,7 @@ struct Ex1
 	};
 
 	inline static Eigen::VectorXd g2(Eigen::VectorXd X, Eigen::VectorXd U, double T, vector_double params) {
-		Eigen::VectorXd g(2);
+		Eigen::Matrix<double, 2, 1> g(2);
 		g[0] = X[0] - 1.0;
 		g[1] = X[1];
 		return g;
@@ -72,7 +72,7 @@ struct Ex1
 	};
 
 	inline static Eigen::VectorXd g3(Eigen::VectorXd X, Eigen::VectorXd U, double T, vector_double params) {
-		Eigen::VectorXd g(1);
+		Eigen::Matrix<double, 1, 1> g(1);
 		double ulim = params[0];
 		g[0] = sqrt(U[0] * U[0]) - ulim;
 		return g;

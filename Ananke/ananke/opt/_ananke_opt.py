@@ -13,6 +13,7 @@ import AnankeC as ac
 import numpy as np
 import matplotlib.pyplot as plt
 import pygmo as pg
+import pygmo_plugins_nonfree as ppnf
 from scipy.linalg import norm
 from ananke.orbit import *
 from ananke.frames import *
@@ -103,6 +104,7 @@ class Ananke_Config(object):
         self.maxTOF = -1.0
         self.minTOF = -1.0
         self.idxLegObj = 0
+        self.minimize_total_time = False
         return
     
     def add_leg_link(self, l1, l2, lfun, dlfun, length, params, td=False):
@@ -179,7 +181,9 @@ class Ananke_Config(object):
         idT = self.get_dvi_T(self.idxLegObj)
         dt = x[idT] / float(TLobj.num_nodes-1)
         J = 0.0
-        if TLobj.objType == ObjectiveFlags.LAGRANGE:
+        if self.minimize_total_time:
+            J = sum([ x[self.get_dvi_T(ii)] for ii in range(0, len(self.TrajLegs)) ])
+        elif TLobj.objType == ObjectiveFlags.LAGRANGE:
             J = 0.0
             for ii in range(0, TLobj.num_nodes-1):
                 Tk = T0 + dt*ii
@@ -342,6 +346,10 @@ class Ananke_Config(object):
         dt = x[idT] / float(TLobj.num_nodes-1)
         J = self.calc_J(x)
         dJ = np.zeros((1, len(x)))
+        if self.minimize_total_time:
+            for ii, TL in enumerate(self.TrajLegs):
+                idT = self.get_dvi_T(ii)
+                dJ[0,idT] = 1.0
         if TLobj.objType == ObjectiveFlags.LAGRANGE:
             dJ[0,idT] = J / x[idT]
             for jj in range(0, TLobj.num_nodes):

@@ -204,6 +204,26 @@ def dg_conU(X, U, T, params):
     dgdU[0, 2] = 2 * U[2]
     return [dgdX, dgdU, dgdT]
 
+
+# -----------------------------------------------------------
+# Path eq constraint: radius magnitude
+# -----------------------------------------------------------
+def g_alt(X, U, T, params):
+    req = params[0]
+    g = np.zeros(1)
+    g[0] = ( req**2.0 - (X[0]**2.0 + X[1]**2.0 + X[2]**2.0) ) / req**2.0
+    return g
+
+def dg_alt(X, U, T, params):
+    req = params[0]
+    dgdX = np.zeros((1, 7))
+    dgdU = np.zeros((1, 4))
+    dgdT = np.zeros((1, 1))
+    dgdX[0, 0] = -2 * X[0] / req**2.0
+    dgdX[0, 1] = -2 * X[1] / req**2.0
+    dgdX[0, 2] = -2 * X[2] / req**2.0
+    return [dgdX, dgdU, dgdT]
+
 # -----------------------------------------------------------
 # Path ineq constraint: control throttle bounds
 # -----------------------------------------------------------
