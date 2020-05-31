@@ -64,7 +64,7 @@ parLand = [Omega, R_eq, LSlat, LSlon, LSalt] + rf + vf + np.reshape(R_UEN_PF.as_
 ao = AnankeC.Ananke_Config()
 
 # Coasting leg
-nn1 = 20
+nn1 = 10
 tl1 = AnankeC.TrajLeg(nn1, 100.0)
 tl1.set_len_X_U(7, 4)
 tl1.set_dynamics(lo.f, lo.df, [mu, 0.0, isp])
@@ -72,13 +72,13 @@ tl1.add_eq(lo.g_X0, lo.dg_X0, 7, RegionFlags.FRONT, (r0_I.tolist() + v0_I.tolist
 tl1.add_eq(lo.g_conU, lo.dg_conU, 1, RegionFlags.PATH, [])
 tl1.add_ineq(lo.g_conEtaLB, lo.dg_conEtaLB, 1, RegionFlags.PATH, [0.0])
 tl1.add_ineq(lo.g_conEtaUB, lo.dg_conEtaUB, 1, RegionFlags.PATH, [0.0])
-tl1.set_TOF(100.0, 1200.0)
+tl1.set_TOF(120.0, 1200.0)
 bnds_min = 11 * [-2000000]
 bnds_max = 11 * [ 2000000]
 tl1.set_bounds(bnds_min, bnds_max)
 
 # Configure a trajectory leg.
-nn2 = 30
+nn2 = 10
 tl2 = AnankeC.TrajLeg(nn2, 300.0)
 tl2.set_len_X_U(7, 4)
 tl2.set_dynamics(lo.f, lo.df, [mu, Tmax, isp])
@@ -116,7 +116,7 @@ for ii in range(0, nn2):
 
 AnankeC.set_dv(xinit)
 AnankeC.set_ac(ao)
-X, F = AnankeC.optimize(6000, 50, 1e-2)
+X, F = AnankeC.optimize(15000, 50, 1e-4)
 
 # Grab first leg data.
 outdata = ao.get_array_data(X)

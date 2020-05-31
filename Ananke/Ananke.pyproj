@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a38018e2-0529-4bef-8b0e-5080eee86238</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>lander_2ph_main.py</StartupFile>
+    <StartupFile>ex1_main.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>

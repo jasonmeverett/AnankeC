@@ -49,7 +49,7 @@ py::tuple optimize(int max_eval, int verb, double ctol)
 		// Construct a pagmo::problem from our example problem.
 		problem p{ Ananke_Problem{} };
 		p.set_c_tol(ctol);
-		auto uda = ppnf::snopt7(true, "C:/Lib/snopt7/lib/snopt7.dll", 7U);
+		auto uda = ppnf::snopt7(true, "C:/Lib/snopt7/build/libsnopt.dll", 7U);
 		uda.set_integer_option("Major iterations limit", max_eval);
 		algorithm algo{ uda };
 		population pop{ p };

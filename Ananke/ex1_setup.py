@@ -11,8 +11,6 @@ Solves a 1D control problem.
 """
 
 import numpy as np
-# import pygmo as pg
-import json
 
 # =============================================================================
 #                                                      DYNAMICS AND CONSTRAINTS

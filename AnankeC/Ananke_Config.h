@@ -555,6 +555,7 @@ struct Ananke_Config
 				}
 
 				// Collocation constraints
+				double nn = static_cast<double>(TL.num_nodes);
 				for (int jj = 0; jj < TL.num_nodes - 1; jj++)
 				{
 					double Tk = T0 + dt * static_cast<double>(jj);
@@ -585,11 +586,11 @@ struct Ananke_Config
 					Eigen::MatrixXd Bkp1 = dfkp1[1];
 					Eigen::MatrixXd Bc = dfc[1];
 					Eigen::MatrixXd I = Eigen::MatrixXd::Identity(TL.lenX, TL.lenX);
-					Eigen::MatrixXd dDel_dXk = I + dt / 6.0 * (Ak + 4.0 * (Ac * (0.5 * I + dt / 8.0 * Ak)));
-					Eigen::MatrixXd dDel_dXkp1 = -I + dt / 6.0 * (Akp1 + 4.0 * (Ac * (0.5 * I - dt / 8.0 * Akp1)));
-					Eigen::MatrixXd dDel_dUk = dt / 6.0 * (Bk + 4.0 * (Ac * (dt / 8.0 * Bk) + 1 / 2.0* Bc));
-					Eigen::MatrixXd dDel_dUkp1 = dt / 6.0 * (Bkp1 + 4.0 * (Ac * (-dt / 8.0 * Bkp1) + 1 / 2.0* Bc));
-					Eigen::MatrixXd dDel_dT = 1.0 / (6.0 * TL.num_nodes) * (fk + 4.0 * fc + fkp1 + dt / 2.0* (Ac * (fk - fkp1)));
+					Eigen::MatrixXd dDel_dXk = I + dt / 6.0 * (Ak + 4.0 * Ac * (0.5 * I + dt / 8.0 * Ak));
+					Eigen::MatrixXd dDel_dXkp1 = -I + dt / 6.0 * (Akp1 + 4.0 * Ac * (0.5 * I - dt / 8.0 * Akp1));
+					Eigen::MatrixXd dDel_dUk = dt / 6.0 * (Bk + 4.0 * (Ac * (dt / 8.0 * Bk) + 1.0 / 2.0* Bc));
+					Eigen::MatrixXd dDel_dUkp1 = dt / 6.0 * (Bkp1 + 4.0 * (Ac * (-dt / 8.0 * Bkp1) + 1.0 / 2.0 * Bc));
+					Eigen::MatrixXd dDel_dT = 1.0 / (6.0 * (nn-1.0)) * (fk + 4.0 * fc + fkp1 ) + dt / 6.0 * (Ac * (1.0 / (2.0*(nn-1.0))) * (fk - fkp1));
 					grad_clc.block(idrow, id0_Xk, TL.lenX, TL.lenX) = dDel_dXk;
 					grad_clc.block(idrow, id0_Uk, TL.lenX, TL.lenU) = dDel_dUk;
 					grad_clc.block(idrow, id0_Xkp1, TL.lenX, TL.lenX) = dDel_dXkp1;
