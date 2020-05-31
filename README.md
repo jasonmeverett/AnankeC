@@ -3,12 +3,13 @@
 </p>
 
 # Ananke
-Generalized collocation optimization toolkit.
+Generalized C++ collocation optimization toolkit with Python bindings.
 
-_Built with Python 3.6 in the Anaconda Python distribution._
+_Built with Python 3.8 in the Anaconda Python distribution._
 
+Anaconda 64-bit Python Distribution is the package-manager used to download required libraries and headers, and is required to run AnankeC.
 
-## Python Modules List
+## Python Helpers
 | Module | Description |
 | - | - |
 | `ananke.frames` | Frame conversion and transformation tools. |
@@ -21,18 +22,30 @@ _Built with Python 3.6 in the Anaconda Python distribution._
 | Module | Description |
 | - | - |
 | `AnankeC` | Baseline module for trajectory leg/optimization confi structs |
-| `AnankeC.ex1` | C++ example functions for the first example script.|
 
-## Interfaced Non-Default Toolkits
-| Toolkit | Version | Install Command | Website |
-| - | - | - | - |
-| `numpy` | >= 1.17.4 | | |
-| `scipy` | >= 1.3.1 | | |
-| `pygmo` | >= 2.11.4 | `conda install -c conda-forge pygmo` | https://esa.github.io/pagmo2/ |
-| `pykep` | >= 2.4.1 | `conda install -c conda-forge pykep` | https://esa.github.io/pykep/ |
-| `matplotlib` | - | - | - |
-| `numba` | - | - | - |
+# Setup
 
+## High-Level requirements:
+* Visual Studio 2019
+* SNOPT (Windows 64-bit DLL)
+* Anaconda 64-bit Python Distribution with requested packages listed below
+
+## Required Anaconda Packages
+The following should be installed with `conda install <toolkit>` in the Anaconda Prompt:
+* `scipy`
+* `numpy`
+* `pygmo_plugins_nonfree`
+* `pagmo`
+* `pagmo-devel`
+* `cspice`
+* `pybind11`
+* `eigen`
+
+## Required Environment Variables
+| Variable | Description |
+| - | - |
+| `CONDA_DIR` | Directory of the installed Anaconda environment with all of the requested packages. For example, if a new environment `ananke_env` was created, then this variable would be `<Anaconda-install-dir>/envs/ananke_env`. |
+| `SNOPT_DLL` | Location of the SNOPT 64-bit Windows DLL on the computer. Please contact `jason.m.everett@nasa.got` for SNOPT issues. |
 
 
 
