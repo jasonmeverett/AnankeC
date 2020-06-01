@@ -2,9 +2,13 @@
 #include "TrajLeg.h"
 #include "Ananke_Config.h"
 #include <pagmo_plugins_nonfree/pagmo_plugins_nonfree.hpp>
+#include <iostream>
+#include <string>
+#include <algorithm>
 
 static Ananke_Config ac;
 static vector_double X0;
+using namespace std;
 
 void set_dv(vector_double dv)
 {
@@ -49,12 +53,23 @@ py::tuple optimize(int max_eval, int verb, double ctol)
 		// Construct a pagmo::problem from our example problem.
 		problem p{ Ananke_Problem{} };
 		p.set_c_tol(ctol);
-		auto uda = ppnf::snopt7(true, "C:/Lib/snopt7/build/libsnopt.dll", 7U);
+		char* snopt_dll = getenv("SNOPT_DLL");
+		string snopt_dll_str = snopt_dll;
+		replace(snopt_dll_str.begin(), snopt_dll_str.end(), '\\', '/');
+		cout << snopt_dll_str << "\n";
+		if (snopt_dll == nullptr)
+		{
+			std::cerr << "ERROR: SNOPT_DLL Environment Variable not set.\n";
+			return py::make_tuple(0.0, 0.0);
+		}
+		auto uda = ppnf::snopt7(true, snopt_dll, 7U);
+		std::cout << uda.get_name() << std::endl;
 		uda.set_integer_option("Major iterations limit", max_eval);
 		algorithm algo{ uda };
 		population pop{ p };
 		pop.push_back(X0);
 		pop = algo.evolve(pop);
+		std::cout << pop.champion_f()[0] << std::endl;
 
 		vector_double F = pop.champion_f();
 		vector_double X = pop.champion_x();
@@ -66,7 +81,7 @@ py::tuple optimize(int max_eval, int verb, double ctol)
 	catch (std::exception e)
 	{
 		std::cout << e.what() << std::endl;
-		return py::make_tuple(0.0);
+		return py::make_tuple(0.0, 0.0);
 	}
 	
 }
