@@ -64,7 +64,8 @@ parLand = [Omega, R_eq, LSlat, LSlon, LSalt] + rf + vf + np.reshape(R_UEN_PF.as_
 ao = AnankeC.Ananke_Config()
 
 # Coasting leg
-nn1 = 10
+nns = [10, 20]
+nn1 = nns[0]
 tl1 = AnankeC.TrajLeg(nn1, 100.0)
 tl1.set_len_X_U(7, 4)
 tl1.set_dynamics(lo.f, lo.df, [mu, 0.0, isp])
@@ -78,7 +79,7 @@ bnds_max = 11 * [ 2000000]
 tl1.set_bounds(bnds_min, bnds_max)
 
 # Configure a trajectory leg.
-nn2 = 10
+nn2 = nns[1]
 tl2 = AnankeC.TrajLeg(nn2, 300.0)
 tl2.set_len_X_U(7, 4)
 tl2.set_dynamics(lo.f, lo.df, [mu, Tmax, isp])
@@ -100,27 +101,41 @@ ao.add_leg(tl2)
 ao.add_leg_link(0, 1, lo.l_12, lo.dl_12, 7, [])
 ao.set_TOF(100.0, 2500.0)
 
-# set up initial guess.
-x0 = [r0_I[0], r0_I[1], r0_I[2], v0_I[0], v0_I[1], v0_I[2], m0, 0.0, -1.0, 0.0, 0.9]
-xf = [R_eq, 0, 0, 0, 0, 0, 0.5*x0[6], 0.0, -1.0, 0.0, 0.2]
-xinit = [500]
-for ii in range(0, nn1):
-    pc = 0.5*float(ii)/float(nn1)
-    xinit = xinit +  ( np.array(x0) + pc * (np.array(xf) - np.array(x0)) ).tolist()
-xinit = xinit + [500]
-for ii in range(0, nn2):
-    pc = 0.5 + 0.5*float(ii)/float(nn2)
-    xinit = xinit +  ( np.array(x0) + pc * (np.array(xf) - np.array(x0)) ).tolist()
+## set up initial guess.
+#x0 = [r0_I[0], r0_I[1], r0_I[2], v0_I[0], v0_I[1], v0_I[2], m0, 0.0, -1.0, 0.0, 0.9]
+#xf = [R_eq, 0, 0, 0, 0, 0, 0.5*x0[6], 0.0, -1.0, 0.0, 0.2]
+#xinit = [500]
+#for ii in range(0, nn1):
+#    pc = 0.5*float(ii)/float(nn1)
+#    xinit = xinit +  ( np.array(x0) + pc * (np.array(xf) - np.array(x0)) ).tolist()
+#xinit = xinit + [500]
+#for ii in range(0, nn2):
+#    pc = 0.5 + 0.5*float(ii)/float(nn2)
+#    xinit = xinit +  ( np.array(x0) + pc * (np.array(xf) - np.array(x0)) ).tolist()
+#x1 = xinit
 
-# Xinit = np.load('champion_x.npy')
+outold = np.load('champion_out.npy', allow_pickle=True)
+x1 = []
+T0 = 0.0
+outNew = []
+for ii,leg in enumerate(outold):
+    legNew = np.zeros((nns[ii], leg.shape[1]))
+    x1 = x1 + [leg[-1,0] - leg[0,0]]
+    for jj in range(0, leg.shape[1]):
+        legNew[:,jj] = np.linspace(leg[0,jj],leg[-1,jj],num=nns[ii])
+    for jj in range(0, legNew.shape[0]):
+        x1 = x1 + legNew[jj,1:].tolist()
+    outNew.append(legNew)
 
-AnankeC.set_dv(xinit)
+
+
+AnankeC.set_dv(x1)
 AnankeC.set_ac(ao)
-X, F = AnankeC.optimize(15000, 50, 1e-4)
+X, F = AnankeC.optimize(15000, 50, 1e-4, 1e6)
 
 # Grab first leg data.
 outdata = ao.get_array_data(X)
-np.save('champion_x', X)
+np.save('champion_out', outdata, allow_pickle = True)
 
 # Plot information.
 fig, axs = plt.subplots(3,1,sharex=True,squeeze=True)

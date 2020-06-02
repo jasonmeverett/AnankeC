@@ -20,6 +20,7 @@ void set_ac(Ananke_Config ac_in)
 	ac.set_nec();
 	ac.set_nic();
 	ac.set_bounds();
+	ac.calc_gradient_sparsity(X0);
 }
 
 struct Ananke_Problem {
@@ -36,6 +37,11 @@ struct Ananke_Problem {
 	{
 		return ac.gradient(dv);
 	}
+	sparsity_pattern gradient_sparsity() const
+	{
+		sparsity_pattern sp = ac.gradient_sparsity();
+		return sp;
+	}
 	vector_double fitness(const vector_double& dv) const
 	{
 		return ac.fitness(dv);
@@ -46,7 +52,7 @@ struct Ananke_Problem {
 	}
 };
 
-py::tuple optimize(int max_eval, int verb, double ctol)
+py::tuple optimize(int max_eval, int verb, double ctol, double elw)
 {
 	try
 	{
@@ -65,7 +71,11 @@ py::tuple optimize(int max_eval, int verb, double ctol)
 		auto uda = ppnf::snopt7(true, snopt_dll, 7U);
 		std::cout << uda.get_name() << std::endl;
 		uda.set_integer_option("Major iterations limit", max_eval);
+		uda.set_integer_option("Minor iterations limit", max_eval);
+		uda.set_integer_option("Iterations limit", max_eval);
+		uda.set_numeric_option("Elastic weight", elw);
 		algorithm algo{ uda };
+		// algo.set_verbosity(1);
 		population pop{ p };
 		pop.push_back(X0);
 		pop = algo.evolve(pop);

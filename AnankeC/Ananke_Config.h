@@ -36,6 +36,7 @@ struct Ananke_Config
 	int cur_nec;
 	int cur_nic;
 	std::pair<vector_double, vector_double> cur_bounds;
+	sparsity_pattern sparse_pattern;
 
 	void add_leg_link(int l1, int l2, LnkFuncType lfun, LprFuncType dlfun, int length, vector_double params)
 	{
@@ -425,7 +426,7 @@ struct Ananke_Config
 
 	inline vector_double gradient(vector_double dv)
 	{
-		if(this->use_estimate_grad)
+		if (this->use_estimate_grad)
 		{
 			vector_double x = dv;
 			double dx = this->est_grad_dt;
@@ -470,7 +471,7 @@ struct Ananke_Config
 			TrajLeg TLobj = this->TrajLegs[this->idxLegObj];
 			TrajLeg TL = TLobj;
 			int idT = this->get_dvi_T(this->idxLegObj);
-			double dt = x[idT] / static_cast<double>(TL.num_nodes-1);
+			double dt = x[idT] / static_cast<double>(TL.num_nodes - 1);
 			double J = this->calc_J(x);
 			Eigen::VectorXd dJ = Eigen::VectorXd::Zero(x.size());
 			if (TLobj.J.objType == ObjectiveFlags::LAGRANGE)
@@ -505,7 +506,7 @@ struct Ananke_Config
 					T0 += x[this->get_dvi_T(jj)];
 				}
 				int idT = this->get_dvi_T(ii);
-				double dt = x[idT] / static_cast<double>(TL.num_nodes-1);
+				double dt = x[idT] / static_cast<double>(TL.num_nodes - 1);
 
 				// Equality constraints
 				for (int jj = 0; jj < TL.coneqs_f.size(); jj++)
@@ -517,9 +518,9 @@ struct Ananke_Config
 					double T = T0;
 					vector_double params = coneq.params;
 					std::vector<Eigen::MatrixXd> dcon = coneq.dcon(X, U, T, params);
-					grad_clc.block(idrow, id0, coneq.lcon, TL.lenX)			= dcon[0];
-					grad_clc.block(idrow, id0+TL.lenX, coneq.lcon, TL.lenU) = dcon[1];
-					grad_clc.block(idrow, idT, coneq.lcon, 1)				= dcon[2];
+					grad_clc.block(idrow, id0, coneq.lcon, TL.lenX) = dcon[0];
+					grad_clc.block(idrow, id0 + TL.lenX, coneq.lcon, TL.lenU) = dcon[1];
+					grad_clc.block(idrow, idT, coneq.lcon, 1) = dcon[2];
 					idrow += coneq.lcon;
 				}
 				for (int jj = 0; jj < TL.coneqs_b.size(); jj++)
@@ -588,9 +589,9 @@ struct Ananke_Config
 					Eigen::MatrixXd I = Eigen::MatrixXd::Identity(TL.lenX, TL.lenX);
 					Eigen::MatrixXd dDel_dXk = I + dt / 6.0 * (Ak + 4.0 * Ac * (0.5 * I + dt / 8.0 * Ak));
 					Eigen::MatrixXd dDel_dXkp1 = -I + dt / 6.0 * (Akp1 + 4.0 * Ac * (0.5 * I - dt / 8.0 * Akp1));
-					Eigen::MatrixXd dDel_dUk = dt / 6.0 * (Bk + 4.0 * (Ac * (dt / 8.0 * Bk) + 1.0 / 2.0* Bc));
+					Eigen::MatrixXd dDel_dUk = dt / 6.0 * (Bk + 4.0 * (Ac * (dt / 8.0 * Bk) + 1.0 / 2.0 * Bc));
 					Eigen::MatrixXd dDel_dUkp1 = dt / 6.0 * (Bkp1 + 4.0 * (Ac * (-dt / 8.0 * Bkp1) + 1.0 / 2.0 * Bc));
-					Eigen::MatrixXd dDel_dT = 1.0 / (6.0 * (nn-1.0)) * (fk + 4.0 * fc + fkp1 ) + dt / 6.0 * (Ac * (1.0 / (2.0*(nn-1.0))) * (fk - fkp1));
+					Eigen::MatrixXd dDel_dT = 1.0 / (6.0 * (nn - 1.0)) * (fk + 4.0 * fc + fkp1) + dt / 6.0 * (Ac * (1.0 / (2.0 * (nn - 1.0))) * (fk - fkp1));
 					grad_clc.block(idrow, id0_Xk, TL.lenX, TL.lenX) = dDel_dXk;
 					grad_clc.block(idrow, id0_Uk, TL.lenX, TL.lenU) = dDel_dUk;
 					grad_clc.block(idrow, id0_Xkp1, TL.lenX, TL.lenX) = dDel_dXkp1;
@@ -647,7 +648,7 @@ struct Ananke_Config
 					T0 += x[this->get_dvi_T(jj)];
 				}
 				int idT = this->get_dvi_T(ii);
-				double dt = x[idT] / static_cast<double>(TL.num_nodes-1);
+				double dt = x[idT] / static_cast<double>(TL.num_nodes - 1);
 
 				// Inequality constraints
 				for (int jj = 0; jj < TL.conins_f.size(); jj++)
@@ -714,12 +715,210 @@ struct Ananke_Config
 			idrow += 2;
 
 			Eigen::MatrixXd grad_trn = grad_clc.transpose();
-			Eigen::VectorXd grad_rtn(Eigen::Map<Eigen::VectorXd>(grad_trn.data(), 
-				grad_trn.rows()*grad_trn.cols()));
+			Eigen::VectorXd grad_rtn(Eigen::Map<Eigen::VectorXd>(grad_trn.data(), grad_trn.rows() * grad_trn.cols()));
 			vector_double outRtn(grad_rtn.data(), grad_rtn.data() + grad_rtn.size());
 
-			return outRtn;
+			vector_double sparseOut;
+			for (int ii = 0; ii < this->sparse_pattern.size(); ii++)
+			{
+				int id0 = this->sparse_pattern[ii].first;
+				int id1 = this->sparse_pattern[ii].second;
+				sparseOut.push_back(grad_clc(id0, id1));
+			}
+
+			return sparseOut;
 		}
+	}
+
+
+
+
+	void calc_gradient_sparsity(vector_double dv)
+	{
+		using Vec = Eigen::VectorXd;
+		using Mat = Eigen::MatrixXd;
+
+		// Track through index.
+		int idrow = 0;
+
+		Eigen::Map<Eigen::VectorXd, Eigen::Unaligned> x(dv.data(), dv.size());
+
+		// Set up gradient size.
+		Eigen::MatrixXd grad_clc = Eigen::MatrixXd::Zero(1 + this->get_nec() + this->get_nic(), x.size());
+
+		// Calculate partial for cost function.
+		TrajLeg TLobj = this->TrajLegs[this->idxLegObj];
+		TrajLeg TL = TLobj;
+		int idT = this->get_dvi_T(this->idxLegObj);
+		Eigen::VectorXd dJ = Eigen::VectorXd::Zero(x.size());
+		if (TLobj.J.objType == ObjectiveFlags::LAGRANGE)
+		{
+			dJ(idT) = 1;
+			for (int jj = 0; jj < TLobj.num_nodes; jj++)
+			{
+				int id0_Xk = this->get_dvi_N(this->idxLegObj, jj);
+				int id0_Uk = id0_Xk + TL.lenX;
+				dJ.segment(id0_Xk, TL.lenX) = Vec::Ones(TL.lenX);
+				dJ.segment(id0_Uk, TL.lenU) = Vec::Ones(TL.lenU);
+			}
+		}
+		grad_clc.row(0) = dJ;
+		idrow = 1;
+
+		// Equality Constraints
+		for (int ii = 0; ii < this->TrajLegs.size(); ii++)
+		{
+			TrajLeg TL = this->TrajLegs[ii];
+			int idT = this->get_dvi_T(ii);
+
+			// Equality constraints
+			for (int jj = 0; jj < TL.coneqs_f.size(); jj++)
+			{
+				Constraint coneq = TL.coneqs_f[jj];
+				int id0 = this->get_dvi_N(ii, 0);
+				grad_clc.block(idrow, id0, coneq.lcon, TL.lenX) = Mat::Ones(coneq.lcon, TL.lenX);
+				grad_clc.block(idrow, id0 + TL.lenX, coneq.lcon, TL.lenU) = Mat::Ones(coneq.lcon, TL.lenU);
+				grad_clc.block(idrow, idT, coneq.lcon, 1) = Mat::Ones(coneq.lcon, 1);
+				idrow += coneq.lcon;
+			}
+			for (int jj = 0; jj < TL.coneqs_b.size(); jj++)
+			{
+				Constraint coneq = TL.coneqs_b[jj];
+				int id0 = this->get_dvi_N(ii, -1);
+				grad_clc.block(idrow, id0, coneq.lcon, TL.lenX) = Mat::Ones(coneq.lcon, TL.lenX);
+				grad_clc.block(idrow, id0 + TL.lenX, coneq.lcon, TL.lenU) = Mat::Ones(coneq.lcon, TL.lenU);
+				grad_clc.block(idrow, idT, coneq.lcon, 1) = Mat::Ones(coneq.lcon, 1);
+				idrow += coneq.lcon;
+			}
+			for (int jj = 0; jj < TL.coneqs_p.size(); jj++)
+			{
+				Constraint coneq = TL.coneqs_p[jj];
+				vector_double params = coneq.params;
+				for (int kk = 0; kk < TL.num_nodes; kk++)
+				{
+					int id0 = this->get_dvi_N(ii, kk);
+					grad_clc.block(idrow, id0, coneq.lcon, TL.lenX) = Mat::Ones(coneq.lcon, TL.lenX);
+					grad_clc.block(idrow, id0 + TL.lenX, coneq.lcon, TL.lenU) = Mat::Ones(coneq.lcon, TL.lenU);
+					grad_clc.block(idrow, idT, coneq.lcon, 1) = Mat::Ones(coneq.lcon, 1);
+					idrow += coneq.lcon;
+				}
+			}
+
+			// Collocation constraints
+			for (int jj = 0; jj < TL.num_nodes - 1; jj++)
+			{
+				int id0_Xk = this->get_dvi_N(ii, jj);
+				int id0_Uk = id0_Xk + TL.lenX;
+				int id0_Xkp1 = id0_Uk + TL.lenU;
+				int id0_Ukp1 = id0_Xkp1 + TL.lenX;
+				grad_clc.block(idrow, id0_Xk, TL.lenX, TL.lenX) = Mat::Ones(TL.lenX, TL.lenX);
+				grad_clc.block(idrow, id0_Uk, TL.lenX, TL.lenU) = Mat::Ones(TL.lenX, TL.lenU);
+				grad_clc.block(idrow, id0_Xkp1, TL.lenX, TL.lenX) = Mat::Ones(TL.lenX, TL.lenX);
+				grad_clc.block(idrow, id0_Ukp1, TL.lenX, TL.lenU) = Mat::Ones(TL.lenX, TL.lenU);
+				grad_clc.block(idrow, idT, TL.lenX, 1) = Mat::Ones(TL.lenX, 1);
+				idrow += TL.lenX;
+			}
+		}
+
+		// Linking constraints
+		for (int ii = 0; ii < this->LegLinks.size(); ii++)
+		{
+			LegLink LL = this->LegLinks[ii];
+			int li0 = LL.l1;
+			int li1 = LL.l2;
+			int id0_Xk = this->get_dvi_N(li0, -1);
+			int idf_Xk = id0_Xk + this->TrajLegs[li0].lenX;
+			int id0_Uk = idf_Xk;
+			int idf_Uk = id0_Uk + this->TrajLegs[li0].lenU;
+			int id0_Xkp1 = this->get_dvi_N(li1, 0);
+			int idf_Xkp1 = id0_Xkp1 + this->TrajLegs[li1].lenX;
+			int id0_Ukp1 = idf_Xkp1;
+			int idf_Ukp1 = id0_Ukp1 + this->TrajLegs[li1].lenU;
+			double idT0 = this->get_dvi_T(li0);
+			double idT1 = this->get_dvi_T(li1);
+			grad_clc.block(idrow, id0_Xk, LL.length, this->TrajLegs[li0].lenX) = Mat::Ones(LL.length, this->TrajLegs[li0].lenX);
+			grad_clc.block(idrow, id0_Uk, LL.length, this->TrajLegs[li0].lenU) = Mat::Ones(LL.length, this->TrajLegs[li0].lenU);
+			grad_clc.block(idrow, idT0, LL.length, 1) = Mat::Ones(LL.length, 1);
+			grad_clc.block(idrow, id0_Xkp1, LL.length, this->TrajLegs[li1].lenX) = Mat::Ones(LL.length, this->TrajLegs[li0].lenX);
+			grad_clc.block(idrow, id0_Ukp1, LL.length, this->TrajLegs[li1].lenU) = Mat::Ones(LL.length, this->TrajLegs[li0].lenU);
+			grad_clc.block(idrow, idT1, LL.length, 1) = Mat::Ones(LL.length, 1);
+			idrow += LL.length;
+		}
+
+		// Inequality Constraints
+		for (int ii = 0; ii < this->TrajLegs.size(); ii++)
+		{
+			TrajLeg TL = this->TrajLegs[ii];
+			int idT = this->get_dvi_T(ii);
+
+			// Inequality constraints
+			for (int jj = 0; jj < TL.conins_f.size(); jj++)
+			{
+				Constraint conin = TL.conins_f[jj];
+				int id0 = this->get_dvi_N(ii, 0);
+				grad_clc.block(idrow, id0, conin.lcon, TL.lenX) = Mat::Ones(conin.lcon, TL.lenX);
+				grad_clc.block(idrow, id0 + TL.lenX, conin.lcon, TL.lenU) = Mat::Ones(conin.lcon, TL.lenU);
+				grad_clc.block(idrow, idT, conin.lcon, 1) = Mat::Ones(conin.lcon, 1);
+				idrow += conin.lcon;
+			}
+			for (int jj = 0; jj < TL.conins_b.size(); jj++)
+			{
+				Constraint conin = TL.conins_b[jj];
+				int id0 = this->get_dvi_N(ii, -1);
+				grad_clc.block(idrow, id0, conin.lcon, TL.lenX) = Mat::Ones(conin.lcon, TL.lenX);
+				grad_clc.block(idrow, id0 + TL.lenX, conin.lcon, TL.lenU) = Mat::Ones(conin.lcon, TL.lenU);
+				grad_clc.block(idrow, idT, conin.lcon, 1) = Mat::Ones(conin.lcon, 1);
+				idrow += conin.lcon;
+			}
+			for (int jj = 0; jj < TL.conins_p.size(); jj++)
+			{
+				Constraint conin = TL.conins_p[jj];
+				vector_double params = conin.params;
+				for (int kk = 0; kk < TL.num_nodes; kk++)
+				{
+					int id0 = this->get_dvi_N(ii, kk);
+					grad_clc.block(idrow, id0, conin.lcon, TL.lenX) = Mat::Ones(conin.lcon, TL.lenX);
+					grad_clc.block(idrow, id0 + TL.lenX, conin.lcon, TL.lenU) = Mat::Ones(conin.lcon, TL.lenU);
+					grad_clc.block(idrow, idT, conin.lcon, 1) = Mat::Ones(conin.lcon, 1);
+					idrow += conin.lcon;
+				}
+			}
+
+			// Leg TOF constraints
+			grad_clc(idrow, idT) = 1;
+			idrow++;
+			grad_clc(idrow, idT) = 1;
+			idrow++;
+		}
+
+		// Total TOF constraints.
+		for (int ii = 0; ii < this->TrajLegs.size(); ii++)
+		{
+			TrajLeg TL = this->TrajLegs[ii];
+			int idT = this->get_dvi_T(ii);
+			grad_clc(idrow, idT) = 1;
+			grad_clc(idrow + 1, idT) = 1;
+		}
+
+		std::vector<std::pair<vector_double::size_type, vector_double::size_type>> sparsityPattern;
+		for (int ii = 0; ii < grad_clc.rows(); ii++)
+		{
+			for (int jj = 0; jj < grad_clc.cols(); jj++)
+			{
+				if (fabs(grad_clc(ii, jj)) > 0.0)
+				{
+					sparsityPattern.push_back(std::make_pair(ii, jj));
+				}
+			}
+		}
+		this->sparse_pattern = sparsityPattern;
+		
+		return;
+	}
+
+	sparsity_pattern gradient_sparsity()
+	{
+		return this->sparse_pattern;
 	}
 
 	void add_leg(TrajLeg tl) 
