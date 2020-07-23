@@ -13,7 +13,7 @@
     <RootNamespace>Ananke</RootNamespace>
     <InterpreterId>CondaEnv|CondaEnv|pkenv</InterpreterId>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
+    <EnableNativeCodeDebugging>True</EnableNativeCodeDebugging>
     <InterpreterArguments>
     </InterpreterArguments>
     <SuppressConfigureTestFrameworkPrompt>true</SuppressConfigureTestFrameworkPrompt>

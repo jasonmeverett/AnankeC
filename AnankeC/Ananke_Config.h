@@ -156,8 +156,8 @@ struct Ananke_Config
 		for (int ii = 0; ii < this->TrajLegs.size(); ii++)
 		{
 			TrajLeg TL = this->TrajLegs[ii];
-			LB.push_back(-100000.0);
-			UB.push_back(+100000.0);
+			LB.push_back(-10000.0);
+			UB.push_back(+10000.0);
 			for (int jj = 0; jj < TL.num_nodes; jj++)
 			{
 				for (int kk = 0; kk < TL.bnds_min.size(); kk++)
@@ -187,22 +187,27 @@ struct Ananke_Config
 		if (TL.J.objType == ObjectiveFlags::LAGRANGE)
 		{
 			J = 0.0;
+			Eigen::VectorXd Xk(TL.lenX);
+			Eigen::VectorXd Uk(TL.lenU);
+			Eigen::VectorXd Xkp1(TL.lenX);
+			Eigen::VectorXd Ukp1(TL.lenU);
+			int id0_Xk = this->get_dvi_N(this->idxLegObj, 0);
 			for (int ii = 0; ii < TL.num_nodes - 1; ii++)
 			{
 				double Tk = T0 + dt * static_cast<double>(ii);
 				double Tkp1 = T0 + dt * static_cast<double>(ii + 1);
-				int id0_Xk = this->get_dvi_N(this->idxLegObj, ii);
 				int id0_Uk = id0_Xk + TL.lenX;
 				int id0_Xkp1 = id0_Uk + TL.lenU;
 				int id0_Ukp1 = id0_Xkp1 + TL.lenX;
-				Eigen::VectorXd Xk = x.segment(id0_Xk, TL.lenX);
-				Eigen::VectorXd Uk = x.segment(id0_Uk, TL.lenU);
-				Eigen::VectorXd Xkp1 = x.segment(id0_Xkp1, TL.lenX);
-				Eigen::VectorXd Ukp1 = x.segment(id0_Ukp1, TL.lenU);
+				Xk = x.segment(id0_Xk, TL.lenX);
+				Uk = x.segment(id0_Uk, TL.lenU);
+				Xkp1 = x.segment(id0_Xkp1, TL.lenX);
+				Ukp1 = x.segment(id0_Ukp1, TL.lenU);
 				vector_double params = TL.J.params;
 				double J1 = TL.J.f(Xk, Uk, Tk, params);
 				double J2 = TL.J.f(Xkp1, Ukp1, Tkp1, params);
 				J += 0.5 * (J1 + J2) * dt;
+				id0_Xk += TL.lenN;
 			}
 		}
 		return J;
@@ -223,6 +228,9 @@ struct Ananke_Config
 		Eigen::VectorXd CONEQ = Eigen::VectorXd::Zero(this->get_nec() - num_con_user);
 		Eigen::VectorXd CONIN = Eigen::VectorXd::Zero(this->get_nic());
 		Eigen::VectorXd CONLK = Eigen::VectorXd::Zero(num_con_user);
+		int idxEQ = 0;
+		int idxLK = 0;
+		int idxIN = 0;
 
 		// Calculate objective.
 		double J = this->calc_J(x);
@@ -230,11 +238,6 @@ struct Ananke_Config
 
 		// Constraints
 		double tofTOT = 0.0;
-		const int num_eqs = this->get_nec() - this->LegLinks.size();
-		const int num_ins = this->get_nic();
-		const int num_lks = this->LegLinks.size();
-		std::vector<Eigen::VectorXd> constr_eqs;
-		std::vector<Eigen::VectorXd> constr_ins;
 		for (int ii = 0; ii < this->TrajLegs.size(); ii++)
 		{
 			TrajLeg TL = this->TrajLegs[ii];
@@ -256,7 +259,8 @@ struct Ananke_Config
 				Eigen::VectorXd U = x.segment(id0 + TL.lenX, TL.lenU);
 				double T = T0;
 				vector_double params = coneq.params;
-				constr_eqs.push_back(coneq.con(X, U, T, params));
+				CONEQ.segment(idxEQ, coneq.lcon) = coneq.con(X, U, T, params);
+				idxEQ += coneq.lcon;
 			}
 			for (int jj = 0; jj < TL.coneqs_b.size(); jj++)
 			{
@@ -266,44 +270,61 @@ struct Ananke_Config
 				Eigen::VectorXd U = x.segment(id0 + TL.lenX, TL.lenU);
 				double T = T0 + x[this->get_dvi_T(ii)];
 				vector_double params = coneq.params;
-				constr_eqs.push_back(coneq.con(X, U, T, params));
+				CONEQ.segment(idxEQ, coneq.lcon) = coneq.con(X, U, T, params);
+				idxEQ += coneq.lcon;
 			}
 			for (int jj = 0; jj < TL.coneqs_p.size(); jj++)
 			{
 				Constraint coneq = TL.coneqs_p[jj];
 				vector_double params = coneq.params;
+				Eigen::VectorXd X(TL.lenX);
+				Eigen::VectorXd U(TL.lenU);
+				int id0 = this->get_dvi_N(ii, 0);
 				for (int kk = 0; kk < TL.num_nodes; kk++)
 				{
-					int id0 = this->get_dvi_N(ii, kk);
-					Eigen::VectorXd X = x.segment(id0, TL.lenX);
-					Eigen::VectorXd U = x.segment(id0 + TL.lenX, TL.lenU);
+					X = x.segment(id0, TL.lenX);
+					U = x.segment(id0 + TL.lenX, TL.lenU);
 					double T = T0 + dt * static_cast<double>(kk);
-					constr_eqs.push_back(coneq.con(X, U, T, params));
+					CONEQ.segment(idxEQ, coneq.lcon) = coneq.con(X, U, T, params);
+					idxEQ += coneq.lcon;
+					id0 += TL.lenN;
 				}
 			}
 
 			// Collocation constraints
+			Eigen::VectorXd Xk(TL.lenX);
+			Eigen::VectorXd Uk(TL.lenU);
+			Eigen::VectorXd Xkp1(TL.lenX);
+			Eigen::VectorXd Ukp1(TL.lenU);
+			Eigen::VectorXd fk(TL.lenX);
+			Eigen::VectorXd fkp1(TL.lenX);
+			Eigen::VectorXd Uc(TL.lenU);
+			Eigen::VectorXd Xc(TL.lenX);
+			Eigen::VectorXd fc(TL.lenX);
+			Eigen::VectorXd constr_p(TL.lenX);
+			vector_double params = TL.f.params;
+			int id0_Xk = this->get_dvi_N(ii, 0);
 			for (int jj = 0; jj < TL.num_nodes-1; jj++)
 			{
 				double Tk = T0 + dt * static_cast<double>(jj);
 				double Tkp1 = T0 + dt * static_cast<double>(jj + 1);
-				int id0_Xk = this->get_dvi_N(ii, jj);
 				int id0_Uk = id0_Xk + TL.lenX;
 				int id0_Xkp1 = id0_Uk + TL.lenU;
 				int id0_Ukp1 = id0_Xkp1 + TL.lenX;
-				Eigen::VectorXd Xk = x.segment(id0_Xk, TL.lenX);
-				Eigen::VectorXd Uk = x.segment(id0_Uk, TL.lenU);
-				Eigen::VectorXd Xkp1 = x.segment(id0_Xkp1, TL.lenX);
-				Eigen::VectorXd Ukp1 = x.segment(id0_Ukp1, TL.lenU);
-				vector_double params = TL.f.params;
-				Eigen::VectorXd fk = TL.f.f(Xk, Uk, Tk, params);
-				Eigen::VectorXd fkp1 = TL.f.f(Xkp1, Ukp1, Tkp1, params);
-				Eigen::VectorXd Uc = 0.5 * (Uk + Ukp1);
-				Eigen::VectorXd Xc = 0.5 * (Xk + Xkp1) + dt / 8.0 * (fk - fkp1);
+				Xk = x.segment(id0_Xk, TL.lenX);
+				Uk = x.segment(id0_Uk, TL.lenU);
+				Xkp1 = x.segment(id0_Xkp1, TL.lenX);
+				Ukp1 = x.segment(id0_Ukp1, TL.lenU);
+				fk = TL.f.f(Xk, Uk, Tk, params);
+				fkp1 = TL.f.f(Xkp1, Ukp1, Tkp1, params);
+				Uc = 0.5 * (Uk + Ukp1);
+				Xc = 0.5 * (Xk + Xkp1) + dt / 8.0 * (fk - fkp1);
 				double Tc = 0.5 * (Tk + Tkp1);
-				Eigen::VectorXd fc = TL.f.f(Xc, Uc, Tc, params);
-				Eigen::VectorXd constr_p = Xk - Xkp1 + dt / 6.0 * (fk + 4.0 * fc + fkp1);
-				constr_eqs.push_back(constr_p);
+				fc = TL.f.f(Xc, Uc, Tc, params);
+				constr_p = Xk - Xkp1 + dt / 6.0 * (fk + 4.0 * fc + fkp1);
+				CONEQ.segment(idxEQ, TL.lenX) = constr_p;
+				idxEQ += TL.lenX;
+				id0_Xk += TL.lenN;
 			}
 
 			// Inequality constraints
@@ -315,7 +336,8 @@ struct Ananke_Config
 				Eigen::VectorXd U = x.segment(id0 + TL.lenX, TL.lenU);
 				double T = T0;
 				vector_double params = conin.params;
-				constr_ins.push_back(conin.con(X, U, T, params));
+				CONIN.segment(idxIN, conin.lcon) = conin.con(X, U, T, params);
+				idxIN += conin.lcon;
 			}
 			for (int jj = 0; jj < TL.conins_b.size(); jj++)
 			{
@@ -325,32 +347,35 @@ struct Ananke_Config
 				Eigen::VectorXd U = x.segment(id0 + TL.lenX, TL.lenU);
 				double T = T0 + x[this->get_dvi_T(ii)];
 				vector_double params = conin.params;
-				constr_ins.push_back(conin.con(X, U, T, params));
+				CONIN.segment(idxIN, conin.lcon) = conin.con(X, U, T, params);
+				idxIN += conin.lcon;
 			}
 			for (int jj = 0; jj < TL.conins_p.size(); jj++)
 			{
 				Constraint conin = TL.conins_p[jj];
 				vector_double params = conin.params;
+				Eigen::VectorXd X(TL.lenX);
+				Eigen::VectorXd U(TL.lenU);
+				int id0 = this->get_dvi_N(ii, 0);
 				for (int kk = 0; kk < TL.num_nodes; kk++)
 				{
-					int id0 = this->get_dvi_N(ii, kk);
-					Eigen::VectorXd X = x.segment(id0, TL.lenX);
-					Eigen::VectorXd U = x.segment(id0 + TL.lenX, TL.lenU);
+					X = x.segment(id0, TL.lenX);
+					U = x.segment(id0 + TL.lenX, TL.lenU);
 					double T = T0 + dt * static_cast<double>(kk);
-					constr_ins.push_back(conin.con(X, U, T, params));
+					CONIN.segment(idxIN, conin.lcon) = conin.con(X, U, T, params);
+					idxIN += conin.lcon;
+					id0 += TL.lenN;
 				}
 			}
 
 			// TOF constraints for each leg
-			Eigen::VectorXd tcon(1);
-			tcon(0) = TL.Tmin - x[idT];
-			constr_ins.push_back(tcon);
-			tcon(0) = x[idT] - TL.Tmax;
-			constr_ins.push_back(tcon);
+			CONIN(idxIN) = TL.Tmin - x[idT];
+			idxIN++;
+			CONIN(idxIN) = x[idT] - TL.Tmax;
+			idxIN++;
 		}
 
 		// Linking constraints
-		std::vector<Eigen::VectorXd> constr_lks;
 		for (int ii = 0; ii < this->LegLinks.size(); ii++)
 		{
 			LegLink LL = this->LegLinks[ii];
@@ -371,56 +396,19 @@ struct Ananke_Config
 			Eigen::VectorXd Ukp1 = x.segment(id0_Ukp1, idf_Ukp1 - id0_Ukp1);
 			double T = x[this->get_dvi_T(li1)];
 			Eigen::VectorXd con = LL.lfun(Xk, Uk, Xkp1, Ukp1, T, params);
-			constr_lks.push_back(con);
+			CONLK.segment(idxLK, LL.length) = con;
+			idxLK += LL.length;
 		}
 
 		// Total TOF constraints.
-		Eigen::VectorXd tcon(1);
-		tcon(0) = this->minTOF - tofTOT;
-		constr_ins.push_back(tcon);
-		tcon(0) = tofTOT - this->maxTOF;
-		constr_ins.push_back(tcon);
+		CONIN(idxIN) = this->minTOF - tofTOT;
+		idxIN++;
+		CONIN(idxIN) = tofTOT - this->maxTOF;
+		idxIN++;
 
-		// Copy data into lists.
-		int ic = 0;
-		for (int ii = 0; ii < constr_eqs.size(); ii++)
-		{
-			Eigen::VectorXd con = constr_eqs[ii];
-			CONEQ.segment(ic, con.size()) = con;
-			ic += con.size();
-		}
-		ic = 0;
-		for (int ii = 0; ii < constr_lks.size(); ii++)
-		{
-			Eigen::VectorXd con = constr_lks[ii];
-			for (int jj = 0; jj < con.size(); jj++)
-			{
-				CONLK[ic] = con[jj];
-				ic++;
-			}
-			ic += con.size();
-		}
-		ic = 0;
-		for (int ii = 0; ii < constr_ins.size(); ii++)
-		{
-			Eigen::VectorXd con = constr_ins[ii];
-			CONIN.segment(ic, con.size()) = con;
-			ic += con.size();
-		}
-
-		Eigen::VectorXd CONCB(CONEQ.size() + CONLK.size());
-		CONCB << CONEQ, CONLK;
 		Eigen::VectorXd out(1 + this->get_nec() + this->get_nic());
-		out.segment(0, 1) = OBJVAL;
-		out.segment(1, this->get_nec()) = CONCB;
-		out.segment(1 + this->get_nec(), this->get_nic()) = CONIN;
-
+		out << OBJVAL, CONEQ, CONLK, CONIN;
 		vector_double outRtn(out.data(), out.data() + out.size());
-		//for (int ii = 0; ii < outRtn.size(); ii++)
-		//{
-		//	std::cout << std::setprecision(10) << outRtn[ii] << std::endl;
-		//}
-		//exit(0);
 		return outRtn;
 	}
 
@@ -477,20 +465,22 @@ struct Ananke_Config
 			if (TLobj.J.objType == ObjectiveFlags::LAGRANGE)
 			{
 				dJ(idT) = J / x[idT];
+				Eigen::VectorXd Xk(TL.lenX);
+				Eigen::VectorXd Uk(TL.lenU);
+				std::vector<Eigen::MatrixXd> dfJ = { MatrixXd::Zero(TL.lenX, TL.lenX), MatrixXd::Zero(TL.lenX, TL.lenU) };
+				vector_double params = TL.J.params;
+				int id0_Xk = this->get_dvi_N(this->idxLegObj, 0);
 				for (int jj = 0; jj < TLobj.num_nodes; jj++)
 				{
 					double Tk = T0 + dt * static_cast<double>(jj);
-					int id0_Xk = this->get_dvi_N(this->idxLegObj, jj);
-					int idf_Xk = id0_Xk + TL.lenX;
-					int id0_Uk = idf_Xk;
-					int idf_Uk = id0_Uk + TL.lenU;
-					Eigen::VectorXd Xk = x.segment(id0_Xk, idf_Xk - id0_Xk);
-					Eigen::VectorXd Uk = x.segment(id0_Uk, idf_Uk - id0_Uk);
-					vector_double params = TL.J.params;
+					int id0_Uk = id0_Xk + TL.lenX;
+					Xk = x.segment(id0_Xk, TL.lenX);
+					Uk = x.segment(id0_Uk, TL.lenU);
 					double mlt = (jj != 0 && jj != TL.num_nodes - 1) ? 2.0 : 1.0;
-					std::vector<Eigen::MatrixXd> dfJ = TL.J.df(Xk, Uk, Tk, params);
+					dfJ = TL.J.df(Xk, Uk, Tk, params);
 					dJ.segment(id0_Xk, TL.lenX) = mlt * 0.5 * dt * dfJ[0];
 					dJ.segment(id0_Uk, TL.lenU) = mlt * 0.5 * dt * dfJ[1];
+					id0_Xk += TL.lenN;
 				}
 			}
 			grad_clc.row(0) = dJ;
@@ -541,63 +531,90 @@ struct Ananke_Config
 				{
 					Constraint coneq = TL.coneqs_p[jj];
 					vector_double params = coneq.params;
+					std::vector<Eigen::MatrixXd> dcon = { MatrixXd::Zero(coneq.lcon, TL.lenX), MatrixXd::Zero(coneq.lcon, TL.lenU), MatrixXd::Zero(coneq.lcon, 1) };
+					Eigen::VectorXd X(TL.lenX);
+					Eigen::VectorXd U(TL.lenU);
+					int id0 = this->get_dvi_N(ii, 0);
 					for (int kk = 0; kk < TL.num_nodes; kk++)
 					{
-						int id0 = this->get_dvi_N(ii, kk);
-						Eigen::VectorXd X = x.segment(id0, TL.lenX);
-						Eigen::VectorXd U = x.segment(id0 + TL.lenX, TL.lenU);
+						X = x.segment(id0, TL.lenX);
+						U = x.segment(id0 + TL.lenX, TL.lenU);
 						double T = T0 + dt * static_cast<double>(kk);
-						std::vector<Eigen::MatrixXd> dcon = coneq.dcon(X, U, T, params);
+						dcon = coneq.dcon(X, U, T, params);
 						grad_clc.block(idrow, id0, coneq.lcon, TL.lenX) = dcon[0];
 						grad_clc.block(idrow, id0 + TL.lenX, coneq.lcon, TL.lenU) = dcon[1];
 						grad_clc.block(idrow, idT, coneq.lcon, 1) = dcon[2];
 						idrow += coneq.lcon;
+						id0 += TL.lenN;
 					}
 				}
 
 				// Collocation constraints
 				double nn = static_cast<double>(TL.num_nodes);
+				vector_double params = TL.f.params;
+				Eigen::VectorXd Xk(TL.lenX);
+				Eigen::VectorXd Uk(TL.lenU);
+				Eigen::VectorXd Xkp1(TL.lenX);
+				Eigen::VectorXd Ukp1(TL.lenU);
+				Eigen::VectorXd fk(TL.lenX);
+				Eigen::VectorXd fkp1(TL.lenX);
+				Eigen::VectorXd Uc(TL.lenU);
+				Eigen::VectorXd Xc(TL.lenX);
+				Eigen::VectorXd fc(TL.lenX);
+				Eigen::MatrixXd Ak(TL.lenX, TL.lenX);
+				Eigen::MatrixXd Ac(TL.lenX, TL.lenX);
+				Eigen::MatrixXd Akp1(TL.lenX, TL.lenX);
+				Eigen::MatrixXd Bk(TL.lenX, TL.lenX);
+				Eigen::MatrixXd Bc(TL.lenX, TL.lenX);
+				Eigen::MatrixXd Bkp1(TL.lenX, TL.lenX);
+				Eigen::MatrixXd I = Eigen::MatrixXd::Identity(TL.lenX, TL.lenX);
+				Eigen::MatrixXd dDel_dXk(TL.lenX, TL.lenX);
+				Eigen::MatrixXd dDel_dXkp1(TL.lenX, TL.lenX);
+				Eigen::MatrixXd dDel_dUk(TL.lenX, TL.lenU);
+				Eigen::MatrixXd dDel_dUkp1(TL.lenX, TL.lenU);
+				Eigen::MatrixXd dDel_dT(TL.lenX, 1);
+				std::vector<Eigen::MatrixXd> dfk = { MatrixXd::Zero(TL.lenX, TL.lenX), MatrixXd::Zero(TL.lenX, TL.lenU) };
+				std::vector<Eigen::MatrixXd> dfkp1 = { MatrixXd::Zero(TL.lenX, TL.lenX), MatrixXd::Zero(TL.lenX, TL.lenU) };
+				std::vector<Eigen::MatrixXd> dfc = { MatrixXd::Zero(TL.lenX, TL.lenX), MatrixXd::Zero(TL.lenX, TL.lenU) };
+				int id0_Xk = this->get_dvi_N(ii, 0);
 				for (int jj = 0; jj < TL.num_nodes - 1; jj++)
 				{
 					double Tk = T0 + dt * static_cast<double>(jj);
 					double Tkp1 = T0 + dt * static_cast<double>(jj + 1);
-					int id0_Xk = this->get_dvi_N(ii, jj);
 					int id0_Uk = id0_Xk + TL.lenX;
 					int id0_Xkp1 = id0_Uk + TL.lenU;
 					int id0_Ukp1 = id0_Xkp1 + TL.lenX;
-					Eigen::VectorXd Xk = x.segment(id0_Xk, TL.lenX);
-					Eigen::VectorXd Uk = x.segment(id0_Uk, TL.lenU);
-					Eigen::VectorXd Xkp1 = x.segment(id0_Xkp1, TL.lenX);
-					Eigen::VectorXd Ukp1 = x.segment(id0_Ukp1, TL.lenU);
-					vector_double params = TL.f.params;
-					Eigen::VectorXd fk = TL.f.f(Xk, Uk, Tk, params);
-					Eigen::VectorXd fkp1 = TL.f.f(Xkp1, Ukp1, Tkp1, params);
-					Eigen::VectorXd Uc = 0.5 * (Uk + Ukp1);
-					Eigen::VectorXd Xc = 0.5 * (Xk + Xkp1) + dt / 8 * (fk - fkp1);
+					Xk = x.segment(id0_Xk, TL.lenX);
+					Uk = x.segment(id0_Uk, TL.lenU);
+					Xkp1 = x.segment(id0_Xkp1, TL.lenX);
+					Ukp1 = x.segment(id0_Ukp1, TL.lenU);
+					fk = TL.f.f(Xk, Uk, Tk, params);
+					fkp1 = TL.f.f(Xkp1, Ukp1, Tkp1, params);
+					Uc = 0.5 * (Uk + Ukp1);
+					Xc = 0.5 * (Xk + Xkp1) + dt / 8 * (fk - fkp1);
 					double Tc = 0.5 * (Tk + Tkp1);
-					Eigen::VectorXd fc = TL.f.f(Xc, Uc, Tc, params);
-					PrtFuncType df = TL.f.df;
-					std::vector<Eigen::MatrixXd> dfk = TL.f.df(Xk, Uk, Tk, params);
-					std::vector<Eigen::MatrixXd> dfkp1 = TL.f.df(Xkp1, Ukp1, Tkp1, params);
-					std::vector<Eigen::MatrixXd> dfc = TL.f.df(Xc, Uc, Tc, params);
-					Eigen::MatrixXd Ak = dfk[0];
-					Eigen::MatrixXd Akp1 = dfkp1[0];
-					Eigen::MatrixXd Ac = dfc[0];
-					Eigen::MatrixXd Bk = dfk[1];
-					Eigen::MatrixXd Bkp1 = dfkp1[1];
-					Eigen::MatrixXd Bc = dfc[1];
-					Eigen::MatrixXd I = Eigen::MatrixXd::Identity(TL.lenX, TL.lenX);
-					Eigen::MatrixXd dDel_dXk = I + dt / 6.0 * (Ak + 4.0 * Ac * (0.5 * I + dt / 8.0 * Ak));
-					Eigen::MatrixXd dDel_dXkp1 = -I + dt / 6.0 * (Akp1 + 4.0 * Ac * (0.5 * I - dt / 8.0 * Akp1));
-					Eigen::MatrixXd dDel_dUk = dt / 6.0 * (Bk + 4.0 * (Ac * (dt / 8.0 * Bk) + 1.0 / 2.0 * Bc));
-					Eigen::MatrixXd dDel_dUkp1 = dt / 6.0 * (Bkp1 + 4.0 * (Ac * (-dt / 8.0 * Bkp1) + 1.0 / 2.0 * Bc));
-					Eigen::MatrixXd dDel_dT = 1.0 / (6.0 * (nn - 1.0)) * (fk + 4.0 * fc + fkp1) + dt / 6.0 * (Ac * (1.0 / (2.0 * (nn - 1.0))) * (fk - fkp1));
+					fc = TL.f.f(Xc, Uc, Tc, params);
+					dfk = TL.f.df(Xk, Uk, Tk, params);
+					dfkp1 = TL.f.df(Xkp1, Ukp1, Tkp1, params);
+					dfc = TL.f.df(Xc, Uc, Tc, params);
+					Ak = dfk[0];
+					Akp1 = dfkp1[0];
+					Ac = dfc[0];
+					Bk = dfk[1];
+					Bkp1 = dfkp1[1];
+					Bc = dfc[1];
+					dDel_dXk = I + dt / 6.0 * (Ak + 4.0 * Ac * (0.5 * I + dt / 8.0 * Ak));
+					dDel_dXkp1 = -I + dt / 6.0 * (Akp1 + 4.0 * Ac * (0.5 * I - dt / 8.0 * Akp1));
+					dDel_dUk = dt / 6.0 * (Bk + 4.0 * (Ac * (dt / 8.0 * Bk) + 1.0 / 2.0 * Bc));
+					dDel_dUkp1 = dt / 6.0 * (Bkp1 + 4.0 * (Ac * (-dt / 8.0 * Bkp1) + 1.0 / 2.0 * Bc));
+					dDel_dT = 1.0 / (6.0 * (nn - 1.0)) * (fk + 4.0 * fc + fkp1) + dt / 6.0 * (Ac * (1.0 / (2.0 * (nn - 1.0))) * (fk - fkp1));
 					grad_clc.block(idrow, id0_Xk, TL.lenX, TL.lenX) = dDel_dXk;
 					grad_clc.block(idrow, id0_Uk, TL.lenX, TL.lenU) = dDel_dUk;
 					grad_clc.block(idrow, id0_Xkp1, TL.lenX, TL.lenX) = dDel_dXkp1;
 					grad_clc.block(idrow, id0_Ukp1, TL.lenX, TL.lenU) = dDel_dUkp1;
 					grad_clc.block(idrow, idT, TL.lenX, 1) = dDel_dT;
 					idrow += TL.lenX;
+					id0_Xk += TL.lenN;
 				}
 			}
 
@@ -683,9 +700,9 @@ struct Ananke_Config
 				{
 					Constraint conin = TL.conins_p[jj];
 					vector_double params = conin.params;
+					int id0 = this->get_dvi_N(ii, 0);
 					for (int kk = 0; kk < TL.num_nodes; kk++)
 					{
-						int id0 = this->get_dvi_N(ii, kk);
 						Eigen::VectorXd X = x.segment(id0, TL.lenX);
 						Eigen::VectorXd U = x.segment(id0 + TL.lenX, TL.lenU);
 						double T = T0 + dt * static_cast<double>(kk);
@@ -694,6 +711,7 @@ struct Ananke_Config
 						grad_clc.block(idrow, id0 + TL.lenX, conin.lcon, TL.lenU) = dcon[1];
 						grad_clc.block(idrow, idT, conin.lcon, 1) = dcon[2];
 						idrow += conin.lcon;
+						id0 += TL.lenN;
 					}
 				}
 
@@ -714,16 +732,12 @@ struct Ananke_Config
 			}
 			idrow += 2;
 
-			Eigen::MatrixXd grad_trn = grad_clc.transpose();
-			Eigen::VectorXd grad_rtn(Eigen::Map<Eigen::VectorXd>(grad_trn.data(), grad_trn.rows() * grad_trn.cols()));
-			vector_double outRtn(grad_rtn.data(), grad_rtn.data() + grad_rtn.size());
-
-			vector_double sparseOut;
+			vector_double sparseOut(this->sparse_pattern.size());
 			for (int ii = 0; ii < this->sparse_pattern.size(); ii++)
 			{
 				int id0 = this->sparse_pattern[ii].first;
 				int id1 = this->sparse_pattern[ii].second;
-				sparseOut.push_back(grad_clc(id0, id1));
+				sparseOut[ii] = (grad_clc(id0, id1));
 			}
 
 			return sparseOut;

@@ -18,6 +18,7 @@ import ex1_setup as ex1
 RegionFlags = AnankeC.RegionFlags
 ObjectiveFlags = AnankeC.ObjectiveFlags
 
+
 t1 = time.time()
 
 # =============================================================================
@@ -35,7 +36,7 @@ tl1.set_len_X_U(2, 1)
 tl1.set_dynamics(ex1.f, ex1.df, [])
 tl1.add_eq(ex1.g1, ex1.dg1, 2, RegionFlags.FRONT, [])
 tl1.add_eq(ex1.g2, ex1.dg2, 2, RegionFlags.BACK, [])
-tl1.add_ineq(ex1.g3, ex1.dg3, 1, RegionFlags.PATH, [4.5])
+tl1.add_ineq(ex1.g3, ex1.dg3, 1, RegionFlags.PATH, [4.1])
 tl1.set_obj(ex1.Jctrl, ex1.dJctrl, ObjectiveFlags.LAGRANGE, [])
 tl1.set_TOF(0.1, 1.0)
 bnds_min = [-100.0, -100.0, -100.0]
@@ -45,7 +46,7 @@ tl1.set_bounds(bnds_min, bnds_max)
 # Add a trajectory leg.
 ao.add_leg(tl1)
 ao.set_TOF(0.1, 1.0)
-# ao.use_estimate_grad = True
+#ao.use_estimate_grad = True
 #ao.est_grad_dt = 1e-8
 
 X0 = [1.0]
